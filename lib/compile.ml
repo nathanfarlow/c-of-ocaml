@@ -4,7 +4,6 @@ open Code
 
 type closure_info =
   { pc : Addr.t
-  ; block : block
   ; free_vars : Var.t list
   ; cont : cont
   ; params : Var.t list
@@ -12,46 +11,36 @@ type closure_info =
 
 type ctx =
   { prog : program
-  ; mutable visited : Addr.Set.t
-  ; closure_info : closure_info Map.M(Int).t
+  ; visited : Hash_set.M(Int).t
+  ; closures : closure_info Hashtbl.M(Int).t
   }
 
 let find_closures program =
   let free_vars = Freevars.f program in
   fold_closures program (fun _ params cont acc -> (params, cont) :: acc) []
   |> List.map ~f:(fun (params, ((pc, _) as cont)) ->
-    let block = Addr.Map.find pc program.blocks in
     let free_vars =
       Addr.Map.find_opt pc free_vars
       |> Option.map ~f:Var.Set.to_list
       |> Option.value ~default:[]
     in
-    pc, { pc; block; free_vars; params; cont })
-  |> Map.of_alist_exn (module Int)
+    pc, { pc; free_vars; params; cont })
+  |> Hashtbl.of_alist_exn (module Int)
 ;;
 
-let init_ctx prog = { prog; visited = Addr.Set.empty; closure_info = find_closures prog }
-
-let compile_branch ?(fallthrough = false) ctx pc args =
-  let foo =
-    let block = Addr.Map.find pc ctx.prog.blocks in
-    let params = block.params in
-    List.map2_exn params args ~f:(fun param arg ->
-      match Var.equal param arg with
-      | true -> []
-      | false ->
-        let fresh = Var.fresh () |> Var.to_string in
-        let param = Var.to_string param in
-        let arg = Var.to_string arg in
-        [ Printf.sprintf "value %s = %s;" fresh arg
-        ; Printf.sprintf "%s = %s;" param fresh
-        ])
-    |> List.concat
-    |> String.concat_lines
-  in
-  match fallthrough with
-  | true -> foo
-  | false -> Printf.sprintf "%s\ngoto block_%d;" foo pc
+let rename ctx pc args =
+  let block = Addr.Map.find pc ctx.prog.blocks in
+  let params = block.params in
+  List.map2_exn params args ~f:(fun param arg ->
+    match Var.equal param arg with
+    | true -> []
+    | false ->
+      let fresh = Var.fresh () |> Var.to_string in
+      let param = Var.to_string param in
+      let arg = Var.to_string arg in
+      [ Printf.sprintf "value %s = %s;" fresh arg; Printf.sprintf "%s = %s;" param fresh ])
+  |> List.concat
+  |> String.concat_lines
 ;;
 
 let rec compile_closure ctx closure =
@@ -63,7 +52,7 @@ let rec compile_closure ctx closure =
       Printf.sprintf "  value %s = env[%d];" (Var.to_string v) i)
     |> String.concat ~sep:"\n"
   in
-  let renaming = compile_branch ctx closure.pc (closure.cont |> snd) ~fallthrough:true in
+  let renaming = rename ctx closure.pc (closure.cont |> snd) in
   let body = compile_block ctx closure.pc in
   let num_free = List.length closure.free_vars in
   let num_params = List.length closure.params in
@@ -71,10 +60,10 @@ let rec compile_closure ctx closure =
   Printf.printf "%s\n%s {\n%s\n%s\n%s\n}\n\n" comment signature var_decls renaming body
 
 and compile_block ctx (pc : Addr.t) =
-  if Addr.Set.mem pc ctx.visited
+  if Hash_set.mem ctx.visited pc
   then ""
   else (
-    ctx.visited <- Addr.Set.add pc ctx.visited;
+    Hash_set.add ctx.visited pc;
     let block = Addr.Map.find pc ctx.prog.blocks in
     let compiled_instrs = List.map block.body ~f:(compile_instr ctx) in
     let compiled_last = compile_last ctx block.branch in
@@ -120,6 +109,10 @@ and compile_expr _ctx expr =
   | Prim (prim, args) -> compile_prim prim args
 
 and compile_last ctx (last, _) =
+  let compile_branch ctx pc args =
+    let renames = rename ctx pc args in
+    Printf.sprintf "%s\ngoto block_%d;" renames pc
+  in
   match last with
   | Return var -> Printf.sprintf "  return %s;" (Var.to_string var)
   | Raise (var, _) -> Printf.sprintf "  caml_raise(%s);" (Var.to_string var)
@@ -211,9 +204,9 @@ and compile_prim_arg = function
 ;;
 
 let f prog =
-  let ctx = init_ctx prog in
-  Map.iter ctx.closure_info ~f:(compile_closure ctx);
-  Printf.printf "int main() {\n  caml_main(closure_%d);\n  return 0;\n}\n" prog.start;
-  List.iter (Addr.Map.to_list prog.blocks) ~f:(fun (pc, _) ->
-    assert (Addr.Set.mem pc ctx.visited))
+  let ctx =
+    { prog; visited = Hash_set.create (module Int); closures = find_closures prog }
+  in
+  Hashtbl.iter ctx.closures ~f:(compile_closure ctx);
+  Printf.printf "int main() {\n  caml_main(closure_%d);\n  return 0;\n}\n" prog.start
 ;;

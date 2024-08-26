@@ -1,7 +1,8 @@
+(** This is copied from the implementation of [Js_of_ocaml_compiler.Driver]
+    since it's not exposed. *)
+
 open Core
 open Js_of_ocaml_compiler
-
-(* This is copied from the implementation of [Driver] since it's not exposed. *)
 
 let tailcall = Tailcall.f
 let deadcode p = Deadcode.f p |> fst
