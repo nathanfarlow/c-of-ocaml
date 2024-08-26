@@ -19,7 +19,11 @@
  (name coo)
  (synopsis "A short synopsis")
  (description "A longer description")
- (depends ocaml dune)
+ (depends
+  ocaml
+  dune
+  (js_of_ocaml-compiler
+   (>= 5.6.0)))
  (tags
   (topics "to describe" your project)))
 
