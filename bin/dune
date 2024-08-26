@@ -1,0 +1,6 @@
+(executable
+ (public_name coo)
+ (name main)
+ (libraries coo async core core_unix.command_unix)
+ (preprocess
+  (pps ppx_jane)))

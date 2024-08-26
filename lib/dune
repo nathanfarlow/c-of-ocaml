@@ -1,0 +1,6 @@
+(library
+ (name coo)
+ (libraries core js_of_ocaml-compiler)
+ (inline_tests)
+ (preprocess
+  (pps ppx_jane)))
