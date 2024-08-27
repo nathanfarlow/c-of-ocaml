@@ -74,6 +74,24 @@ and compile_block ctx (pc : Addr.t) =
 
 and compile_instr ctx (instr, _) =
   match instr with
+  | Let (var, Closure (params, (pc, _))) ->
+    let closure_name = Printf.sprintf "closure_%d" pc in
+    let var_name = Var.to_string var in
+    let assignment =
+      Printf.sprintf
+        "value %s = caml_alloc_closure(%s, %d)\n"
+        var_name
+        closure_name
+        (List.length params)
+    in
+    let free_vars = Hashtbl.find_exn ctx.closures pc |> fun c -> c.free_vars in
+    let env_assignments =
+      String.concat
+        ~sep:"\n"
+        (List.mapi free_vars ~f:(fun i v ->
+           Printf.sprintf "%s->env[%d] = %s;" var_name i (Var.to_string v)))
+    in
+    Printf.sprintf "%s\n%s" assignment env_assignments
   | Let (var, expr) ->
     Printf.sprintf "  value %s = %s;" (Var.to_string var) (compile_expr ctx expr)
   | Assign (var1, var2) ->
@@ -90,23 +108,24 @@ and compile_instr ctx (instr, _) =
 
 and compile_expr _ctx expr =
   match expr with
-  | Apply { f; args; exact = _ } ->
+  | Apply { f; args; exact } ->
+    let dbg = if exact then "// exact" else "// not exact" in
     let args_str = String.concat ~sep:", " (List.map args ~f:Var.to_string) in
-    Printf.sprintf "caml_call%d(%s, %s)" (List.length args) (Var.to_string f) args_str
+    Printf.sprintf
+      "caml_call%d(%s, %s) %s"
+      (List.length args)
+      (Var.to_string f)
+      args_str
+      dbg
   | Block (tag, fields, _) ->
     let fields_str =
       Array.to_list fields |> List.map ~f:Var.to_string |> String.concat ~sep:", "
     in
     Printf.sprintf "caml_alloc(%d, %d, %s)" (Array.length fields) tag fields_str
   | Field (var, n) -> Printf.sprintf "Field(%s, %d)" (Var.to_string var) n
-  | Closure (params, (pc, _)) ->
-    let closure_name = Printf.sprintf "closure_%d" pc in
-    Printf.sprintf
-      "caml_alloc_closure(%s, %d) /* TODO: populate the env with the free vars.*/"
-      closure_name
-      (List.length params)
   | Constant c -> compile_constant c
   | Prim (prim, args) -> compile_prim prim args
+  | Closure _ -> assert false
 
 and compile_last ctx (last, _) =
   let compile_branch ctx pc args =
@@ -164,7 +183,7 @@ and compile_constant c =
     let elements_str =
       Array.to_list elements |> List.map ~f:compile_constant |> String.concat ~sep:", "
     in
-    Printf.sprintf "caml_alloc_tuple(%d, %d, %s)" (Array.length elements) tag elements_str
+    Printf.sprintf "caml_alloc(%d, %d, %s)" (Array.length elements) tag elements_str
 
 and compile_prim prim args =
   match prim, args with
@@ -207,6 +226,7 @@ let f prog =
   let ctx =
     { prog; visited = Hash_set.create (module Int); closures = find_closures prog }
   in
+  In_channel.read_all "../lib/stdlib.c" |> print_endline;
   Hashtbl.iter ctx.closures ~f:(compile_closure ctx);
   Printf.printf "int main() {\n  caml_main(closure_%d);\n  return 0;\n}\n" prog.start
 ;;

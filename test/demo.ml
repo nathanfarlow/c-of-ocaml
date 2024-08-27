@@ -13,8 +13,9 @@ let rec iter l ~f =
 ;;
 
 let () =
-  let _l = [ Some "hello"; Some "world"; None ] in
+  let f = "hello" in
+  let _l = [ Some f; Some "world"; None ] in
   iter _l ~f:(function
-    | None -> print_endline "None"
+    | None -> print_endline f
     | Some s -> print_endline s)
 ;;
