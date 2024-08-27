@@ -1,6 +1,8 @@
+#include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 typedef uintptr_t value;
 typedef uintptr_t unatint;
@@ -32,7 +34,7 @@ typedef struct {
   value env[];
 } closure_t;
 
-block *caml_alloc(unatint size, uchar tag) {
+block *caml_alloc_block(unatint size, uchar tag) {
   block *b = malloc(sizeof(block) + size * sizeof(value));
   b->size = size;
   b->tag = tag;
@@ -40,7 +42,7 @@ block *caml_alloc(unatint size, uchar tag) {
 }
 
 value caml_alloc_closure(value (*fun)(value *), unatint env_size) {
-  block *b = caml_alloc(env_size + 1, Tag_closure);
+  block *b = caml_alloc_block(env_size + 1, Tag_closure);
   closure_t *c = (closure_t *)b->data;
   c->fun = fun;
   c->env_size = env_size;
@@ -49,9 +51,23 @@ value caml_alloc_closure(value (*fun)(value *), unatint env_size) {
 
 value caml_copy_string(const char *s) {
   unatint len = strlen(s) + 1;
-  block *b = caml_alloc((len / sizeof(value)), Tag_string);
+  block *b = caml_alloc_block((len / sizeof(value)), Tag_string);
   b->size = len - 1;
   memcpy(b->data, s, len);
 }
 
+value caml_alloc(natint size, uchar tag, ...) {
+  block *b = caml_alloc_block(size, tag);
+  va_list args;
+  va_start(args, tag);
+  natint i;
+  for (i = 0; i < size; i++) {
+    b->data[i] = va_arg(args, value);
+  }
+  va_end(args);
+  return (value)b;
+}
+
 #define Field(v, i) (((block *)(v))->data[i])
+
+int main() {}
