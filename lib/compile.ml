@@ -21,7 +21,7 @@ let find_closures program =
   |> List.map ~f:(fun (params, ((pc, _) as cont)) ->
     let free_vars =
       Addr.Map.find_opt pc free_vars
-      |> Option.map ~f:Var.Set.to_list
+      |> Option.map ~f:Var.Set.elements
       |> Option.value ~default:[]
     in
     pc, { pc; free_vars; params; cont })
@@ -166,7 +166,24 @@ and compile_last ctx (last, _) =
       |> String.concat ~sep:"\n"
     in
     Printf.sprintf "  switch (Long_val(%s)) {\n%s\n  }" (Var.to_string var) cases
-  | Pushtrap _ | Poptrap _ -> "  // Exception handling not implemented"
+  | Pushtrap ((pc, args), _, (pc2, args2)) ->
+    let branch = compile_branch ctx pc args in
+    let block = compile_block ctx pc in
+    let handler = compile_branch ctx pc2 args2 in
+    let handler_block = compile_block ctx pc2 in
+    Printf.sprintf
+      "  %s\n\
+       %s\n\
+      \  caml_pushtrap();\n\
+      \  if (caml_exception_pointer != NULL) { %s } else { %s }"
+      branch
+      block
+      handler
+      handler_block
+  | Poptrap (pc, args) ->
+    let branch = compile_branch ctx pc args in
+    let block = compile_block ctx pc in
+    Printf.sprintf "  %s\n  %s\ncaml_poptrap();" branch block
 
 and compile_constant c =
   match c with

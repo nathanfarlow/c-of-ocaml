@@ -1,5 +1,7 @@
 external weeeee : string -> unit = "weeeee"
 
+let _ = Bar.fib
+
 type opt =
   | None
   | Some of string
