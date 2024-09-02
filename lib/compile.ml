@@ -46,7 +46,7 @@ let rename ctx pc args =
 let rec compile_closure ctx closure =
   let all_params = closure.free_vars @ closure.params in
   let func_name = Printf.sprintf "closure_%d" closure.pc in
-  let signature = Printf.sprintf "value* %s(value* env)" func_name in
+  let signature = Printf.sprintf "value %s(value* env)" func_name in
   let var_decls =
     List.mapi all_params ~f:(fun i v ->
       Printf.sprintf "  value %s = env[%d];" (Var.to_string v) i)
@@ -250,5 +250,5 @@ let f prog =
     { prog; visited = Hash_set.create (module Int); closures = find_closures prog }
   in
   Hashtbl.iter ctx.closures ~f:(compile_closure ctx);
-  Printf.printf "int main() {\n  caml_main(closure_%d);\n  return 0;\n}\n" prog.start
+  Printf.printf "int main() {\n  closure_%d(NULL);\n  return 0;\n}\n" prog.start
 ;;

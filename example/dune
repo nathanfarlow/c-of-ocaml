@@ -1,6 +1,6 @@
 (executable
  (name foo)
- (libraries stubs)
+ (libraries stdlib)
  (modes byte))
 
 (rule
@@ -11,9 +11,19 @@
    (run %{bin:c_of_ocaml} %{dep:foo.bc}))))
 
 (rule
+ (target foo.combined.c)
+ (deps
+  (:runtime %{project_root}/lib/runtime/runtime.c)
+  foo.unformatted.c)
+ (action
+  (with-stdout-to
+   %{target}
+   (bash "cat %{runtime} %{dep:foo.unformatted.c}"))))
+
+(rule
  (target foo.c)
  (mode promote)
- (deps foo.unformatted.c)
+ (deps foo.combined.c)
  (action
   (with-stdout-to
    %{target}

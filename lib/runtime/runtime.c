@@ -50,10 +50,12 @@ value caml_alloc_closure(value (*fun)(value *), unatint env_size) {
 }
 
 value caml_copy_string(const char *s) {
-  unatint len = strlen(s) + 1;
-  block *b = caml_alloc_block((len / sizeof(value)), Tag_string);
-  b->size = len - 1;
-  memcpy(b->data, s, len);
+  unatint len = strlen(s);
+  unatint num_values_for_string = ((len + 1) / sizeof(value)) + 1;
+  block *b = caml_alloc_block(num_values_for_string + 1, Tag_string);
+  b->data[0] = len;
+  memcpy(b->data + 1, s, len + 1);
+  return (value)b;
 }
 
 value caml_alloc(natint size, uchar tag, ...) {
@@ -69,5 +71,13 @@ value caml_alloc(natint size, uchar tag, ...) {
 }
 
 #define Field(v, i) (((block *)(v))->data[i])
+#define Str_val(v) ((char *)&Field(v, 1))
 
-int main() {}
+#include <stdio.h>
+value weeeee(value s) {
+  puts(Str_val(s));
+  return Val_unit;
+}
+
+// TODO: don't allocate empty list
+value caml_ml_out_channels_list(value unit) { return caml_alloc(0, Tag_tuple); }

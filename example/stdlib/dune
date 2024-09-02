@@ -1,5 +1,7 @@
 (library
- (name stubs)
+ (name stdlib)
+ (stdlib
+  (exit_module std_exit))
  (foreign_stubs
   (language c)
   (names stubs)))

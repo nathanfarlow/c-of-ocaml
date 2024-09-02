@@ -8,7 +8,7 @@ let init () =
   register "caml_ml_open_descriptor_out" `Pure None (Some 1);
   register "caml_fresh_oo_id" `Pure None (Some 1);
   register "caml_ml_out_channels_list" `Pure None (Some 1);
-  (* we ball *)
+  (* we ball. remove these when it becomes a problem. *)
   register "caml_ensure_stack_capacity" `Pure None (Some 1);
   register "caml_ml_flush" `Pure None (Some 1);
   register "caml_register_global" `Pure None (Some 3)
