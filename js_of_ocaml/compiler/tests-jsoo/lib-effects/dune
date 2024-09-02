@@ -1,0 +1,12 @@
+(library
+ (name jsoo_testsuite_effect)
+ (enabled_if
+  (and
+   (>= %{ocaml_version} 5)
+   (= %{profile} using-effects)))
+ (inline_tests
+  ;; This requires the unreleased dune 3.7 to work
+  (enabled_if true)
+  (modes js best))
+ (preprocess
+  (pps ppx_expect)))

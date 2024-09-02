@@ -1,0 +1,16 @@
+(library
+ (name toplevel_expect_test)
+ (libraries compiler-libs.common compiler-libs.toplevel))
+
+(rule
+ (targets toplevel_expect_test.ml)
+ (deps
+  ../select/select.exe
+  toplevel_expect_test.ml-4.08
+  toplevel_expect_test.ml-4.09
+  toplevel_expect_test.ml-4.10
+  toplevel_expect_test.ml-default)
+ (action
+  (with-stdout-to
+   %{targets}
+   (run %{deps}))))

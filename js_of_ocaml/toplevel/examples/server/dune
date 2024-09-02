@@ -1,0 +1,3 @@
+(executables
+ (names server)
+ (libraries findlib cohttp-lwt-unix))

@@ -1,0 +1,89 @@
+(executables
+ (names main)
+ (libraries js_of_ocaml num)
+ (link_flags
+  (:standard -linkall))
+ (modules main)
+ (modes byte))
+
+(executables
+ (names unix)
+ (libraries js_of_ocaml num unix)
+ (link_flags
+  (:standard -linkall))
+ (modules unix)
+ (modes byte))
+
+(rule
+ (targets main.output)
+ (mode
+  (promote (until-clean)))
+ (enabled_if
+  (< %{ocaml_version} 5))
+ (action
+  (with-stdout-to
+   %{targets}
+   (run %{bin:js_of_ocaml} check-runtime +toplevel.js %{dep:main.bc}))))
+
+(rule
+ (targets unix-unix.output)
+ (enabled_if
+  (and
+   (< %{ocaml_version} 5)
+   (= %{os_type} Unix)))
+ (mode
+  (promote (until-clean)))
+ (action
+  (with-stdout-to
+   %{targets}
+   (run %{bin:js_of_ocaml} check-runtime +toplevel.js %{dep:unix.bc}))))
+
+(rule
+ (targets unix-win32.output)
+ (enabled_if
+  (and
+   (< %{ocaml_version} 5)
+   (= %{os_type} Win32)))
+ (mode
+  (promote (until-clean)))
+ (action
+  (with-stdout-to
+   %{targets}
+   (run %{bin:js_of_ocaml} check-runtime +toplevel.js %{dep:unix.bc}))))
+
+(rule
+ (targets main.output5)
+ (mode
+  (promote (until-clean)))
+ (enabled_if
+  (>= %{ocaml_version} 5))
+ (action
+  (with-stdout-to
+   %{targets}
+   (run %{bin:js_of_ocaml} check-runtime +toplevel.js %{dep:main.bc}))))
+
+(rule
+ (targets unix-unix.output5)
+ (enabled_if
+  (and
+   (>= %{ocaml_version} 5)
+   (= %{os_type} Unix)))
+ (mode
+  (promote (until-clean)))
+ (action
+  (with-stdout-to
+   %{targets}
+   (run %{bin:js_of_ocaml} check-runtime +toplevel.js %{dep:unix.bc}))))
+
+(rule
+ (targets unix-win32.output5)
+ (enabled_if
+  (and
+   (>= %{ocaml_version} 5)
+   (= %{os_type} Win32)))
+ (mode
+  (promote (until-clean)))
+ (action
+  (with-stdout-to
+   %{targets}
+   (run %{bin:js_of_ocaml} check-runtime +toplevel.js %{dep:unix.bc}))))

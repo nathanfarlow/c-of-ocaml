@@ -1,0 +1,30 @@
+(executables
+ (names boulderdash)
+ (libraries js_of_ocaml-lwt)
+ (modes byte)
+ (preprocess
+  (pps js_of_ocaml-ppx)))
+
+(rule
+ (targets boulderdash.js)
+ (deps
+  (glob_files maps/*.map))
+ (action
+  (run
+   %{bin:js_of_ocaml}
+   --source-map
+   %{dep:boulderdash.bc}
+   -o
+   %{targets}
+   --pretty
+   --file
+   %{dep:maps.txt}
+   --file
+   maps)))
+
+(alias
+ (name default)
+ (deps
+  boulderdash.js
+  index.html
+  (glob_files sprites/*.{png,svg})))
