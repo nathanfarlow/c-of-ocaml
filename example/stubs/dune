@@ -1,0 +1,5 @@
+(library
+ (name stubs)
+ (foreign_stubs
+  (language c)
+  (names stubs)))

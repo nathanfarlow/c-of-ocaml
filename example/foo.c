@@ -54,59 +54,59 @@ block_2108: //
   value Q = caml_ml_open_descriptor_out(Val_int(2));
 value R = caml_alloc_closure(closure_1781, 1)
 
-
+R->env[0] = b;
   value S = caml_alloc(1, 0, R);
   
-goto block_2833;
-block_2833: // 
+goto block_2830;
+block_2830: // 
   value T = caml_alloc(1, 0, s);
   value U = caml_alloc(2, 0, T, t);
   
-goto block_2873;
-block_2873: // 
+goto block_2871;
+block_2871: // 
   value V = U;
 W = V;
 
-goto block_2800;
-block_2800: //W 
+goto block_2797;
+block_2797: //W 
   if (W) { 
-goto block_2803; } else { 
-goto block_2815; }
-block_2803: // 
+goto block_2800; } else { 
+goto block_2812; }
+block_2800: // 
   value X = Field(W, 1);
   value Y = Field(W, 0);
   
-goto block_2877;
-block_2877: // 
+goto block_2873;
+block_2873: // 
   
-goto block_2818;
-block_2818: // 
+goto block_2815;
+block_2815: // 
   if (Y) { 
-goto block_2821; } else { 
-goto block_2828; }
-block_2821: // 
+goto block_2818; } else { 
+goto block_2825; }
+block_2818: // 
   value Z = Field(Y, 0);
   value _ = weeeee(Z);
   
-goto block_2876;
-block_2876: // 
+goto block_2872;
+block_2872: // 
   value $ = X;
 W = $;
 
-goto block_2800;
+goto block_2797;
 
-block_2828: // 
+block_2825: // 
   value aa = weeeee(caml_copy_string("hello"));
   
-goto block_2876;
-
-block_2815: // 
-  
 goto block_2872;
-block_2872: // 
+
+block_2812: // 
   
-goto block_2871;
-block_2871: // 
+goto block_2870;
+block_2870: // 
+  
+goto block_2869;
+block_2869: // 
   
 goto block_1147;
 block_1147: // 
@@ -114,20 +114,21 @@ block_1147: //
   value ac = caml_atomic_load(S);
   value ad = caml_call1(ac, ab) // not exact;
   
-goto block_2870;
-block_2870: // 
+goto block_2868;
+block_2868: // 
   return Val_unit;
 }
 
-// free: 0, params: 1
+// free: 1, params: 1
 value* closure_1781(value* env) {
-  value ae = env[0];
+  value b = env[0];
+  value ae = env[1];
 
 block_1781: // 
   value af = caml_ml_out_channels_list(Val_int(0));
   
-goto block_2875;
-block_2875: // 
+goto block_2867;
+block_2867: // 
   value ag = af;
 ah = ag;
 

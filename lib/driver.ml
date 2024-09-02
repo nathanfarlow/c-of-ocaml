@@ -2,19 +2,8 @@ open! Core
 open! Js_of_ocaml_compiler
 
 let go ic =
-  let kind = Parse_bytecode.from_channel ic in
-  let cmo =
-    match kind with
-    | `Cmo cmo -> cmo
-    | _ -> assert false
+  let exe =
+    Parse_bytecode.from_exe ~linkall:false ~link_info:false ~include_cmis:false ic
   in
-  let one =
-    Parse_bytecode.from_cmo
-      ~includes:[]
-      ~include_cmis:false
-      ~debug:true
-      cmo
-      In_channel.stdin
-  in
-  Opt.f one.code |> Compile.f
+  Opt.f exe.code |> Compile.f
 ;;

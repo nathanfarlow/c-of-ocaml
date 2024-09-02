@@ -1,17 +1,15 @@
-(rule
- (target foo.cmo)
- (deps foo.ml)
- (action
-  (run %{bin:ocamlc} -nostdlib -nopervasives -c %{dep:foo.ml} -o %{target})))
+(executable
+ (name foo)
+ (libraries stubs)
+ (modes byte))
 
 (rule
  (targets foo.c)
- (deps foo.cmo)
  (mode promote)
  (action
   (with-stdout-to
    %{targets}
-   (run %{bin:c_of_ocaml} %{dep:foo.cmo}))))
+   (run %{bin:c_of_ocaml} %{dep:foo.bc}))))
 
 (alias
  (name default)
