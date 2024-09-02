@@ -226,7 +226,6 @@ let f prog =
   let ctx =
     { prog; visited = Hash_set.create (module Int); closures = find_closures prog }
   in
-  In_channel.read_all "../lib/stdlib.c" |> print_endline;
   Hashtbl.iter ctx.closures ~f:(compile_closure ctx);
   Printf.printf "int main() {\n  caml_main(closure_%d);\n  return 0;\n}\n" prog.start
 ;;

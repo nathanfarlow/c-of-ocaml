@@ -1,5 +1,5 @@
 (executable
- (public_name coo)
+ (public_name c_of_ocaml)
  (name main)
  (libraries coo async core core_unix.command_unix)
  (preprocess

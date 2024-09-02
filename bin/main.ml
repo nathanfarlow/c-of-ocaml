@@ -1,9 +1,15 @@
-open! Core
+open Core
 
-let () =
-  Command_unix.run
-    (Command.basic
-       ~summary:"Compile a cmo file to C. Give cmo file to stdin"
-       (let%map_open.Command () = return () in
-        Coo.Driver.go))
+let command =
+  Command.basic
+    ~summary:"Run the Coo driver"
+    (let%map_open.Command
+       (* flag "-o" (required Filename_unix.arg_type) ~doc:"FILE Output file" *)
+       input_file
+       =
+       anon ("INPUT_FILE" %: Filename_unix.arg_type)
+     in
+     fun () -> In_channel.create input_file |> Coo.Driver.go)
 ;;
+
+let () = Command_unix.run command

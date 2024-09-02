@@ -1,4 +1,4 @@
-external weeeee : string -> unit = "weeeee" [@@js.global]
+external weeeee : string -> unit = "weeeee"
 
 type opt =
   | None

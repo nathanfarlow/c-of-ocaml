@@ -1,8 +1,8 @@
-open Core
+open! Core
 open! Js_of_ocaml_compiler
 
-let go () =
-  let kind = Parse_bytecode.from_channel In_channel.stdin in
+let go ic =
+  let kind = Parse_bytecode.from_channel ic in
   let cmo =
     match kind with
     | `Cmo cmo -> cmo

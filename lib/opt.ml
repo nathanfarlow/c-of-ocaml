@@ -72,5 +72,5 @@ let o3 = loop 10 "tailcall+inline" round1 1 +> loop 10 "flow" round2 1
 
 let f =
   let deadcode_sentinal = Code.Var.fresh_n "undef" in
-  o3 +> exact_calls ~deadcode_sentinal +> Deadcode.f +> fst
+  o3 +> deadcode +> exact_calls ~deadcode_sentinal +> Deadcode.f +> fst
 ;;
