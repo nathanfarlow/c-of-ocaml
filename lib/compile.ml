@@ -28,7 +28,7 @@ let find_closures program =
   |> Hashtbl.of_alist_exn (module Int)
 ;;
 
-let rename ctx pc args =
+let rename ctx pc args ~is_fresh =
   let block = Addr.Map.find pc ctx.prog.blocks in
   let params = block.params in
   List.map2_exn params args ~f:(fun param arg ->
@@ -38,7 +38,12 @@ let rename ctx pc args =
       let fresh = Var.fresh () |> Var.to_string in
       let param = Var.to_string param in
       let arg = Var.to_string arg in
-      [ Printf.sprintf "value %s = %s;" fresh arg; Printf.sprintf "%s = %s;" param fresh ])
+      let second =
+        match is_fresh with
+        | true -> Printf.sprintf "value %s = %s;" param fresh
+        | false -> Printf.sprintf "%s = %s;" param arg
+      in
+      [ Printf.sprintf "value %s = %s;" fresh arg; second ])
   |> List.concat
   |> String.concat_lines
 ;;
@@ -52,8 +57,8 @@ let rec compile_closure ctx closure =
       Printf.sprintf "  value %s = env[%d];" (Var.to_string v) i)
     |> String.concat ~sep:"\n"
   in
-  let renaming = rename ctx closure.pc (closure.cont |> snd) in
-  let body = compile_block ctx closure.pc in
+  let renaming = rename ctx closure.pc (closure.cont |> snd) ~is_fresh:true in
+  let body = compile_block ctx closure.pc |> fst in
   let num_free = List.length closure.free_vars in
   let num_params = List.length closure.params in
   let comment = Printf.sprintf "// free: %d, params: %d" num_free num_params in
@@ -61,7 +66,7 @@ let rec compile_closure ctx closure =
 
 and compile_block ctx (pc : Addr.t) =
   if Hash_set.mem ctx.visited pc
-  then ""
+  then "", false
   else (
     Hash_set.add ctx.visited pc;
     let block = Addr.Map.find pc ctx.prog.blocks in
@@ -70,7 +75,7 @@ and compile_block ctx (pc : Addr.t) =
     let name = Printf.sprintf "block_%d" pc in
     let body = String.concat ~sep:"\n" (compiled_instrs @ [ compiled_last ]) in
     let args_as_str = String.concat ~sep:", " (List.map block.params ~f:Var.to_string) in
-    Printf.sprintf "%s: //%s \n%s" name args_as_str body)
+    Printf.sprintf "%s: //%s \n%s" name args_as_str body, true)
 
 and compile_instr ctx (instr, _) =
   match instr with
@@ -132,23 +137,25 @@ and compile_expr _ctx expr =
      | Alias_prim name -> sprintf "/* Alias primitive: %s */" name)
 
 and compile_last ctx (last, _) =
-  let compile_branch ctx pc args =
-    let renames = rename ctx pc args in
-    Printf.sprintf "%s\ngoto block_%d;" renames pc
+  let compile_branch ctx pc args is_fresh =
+    let renames = rename ctx pc args ~is_fresh in
+    match is_fresh with
+    | true -> renames
+    | false -> Printf.sprintf "%s\ngoto block_%d;" renames pc
   in
   match last with
   | Return var -> Printf.sprintf "  return %s;" (Var.to_string var)
   | Raise (var, _) -> Printf.sprintf "  caml_raise(%s);" (Var.to_string var)
   | Stop -> "  return Val_unit;"
   | Branch (pc, args) ->
-    let branch = compile_branch ctx pc args in
-    let block = compile_block ctx pc in
+    let block, fresh = compile_block ctx pc in
+    let branch = compile_branch ctx pc args fresh in
     Printf.sprintf "  %s\n%s" branch block
   | Cond (var, (pc1, args1), (pc2, args2)) ->
-    let true_branch = compile_branch ctx pc1 args1 in
-    let false_branch = compile_branch ctx pc2 args2 in
-    let true_block = compile_block ctx pc1 in
-    let false_block = compile_block ctx pc2 in
+    let true_branch = compile_branch ctx pc1 args1 false in
+    let false_branch = compile_branch ctx pc2 args2 false in
+    let true_block = compile_block ctx pc1 |> fst in
+    let false_block = compile_block ctx pc2 |> fst in
     Printf.sprintf
       "  if (Bool_val(%s)) { %s } else { %s }\n%s\n%s"
       (Var.to_string var)
@@ -159,18 +166,19 @@ and compile_last ctx (last, _) =
   | Switch (var, arr) ->
     let cases =
       Array.mapi arr ~f:(fun i (pc, args) ->
-        let branch = compile_branch ctx pc args in
-        let block = compile_block ctx pc in
+        let branch = compile_branch ctx pc args false in
+        let block = compile_block ctx pc |> fst in
         Printf.sprintf "    case %d: %s\n%s" i branch block)
       |> Array.to_list
       |> String.concat ~sep:"\n"
     in
     Printf.sprintf "  switch (Int_val(%s)) {\n%s\n  }" (Var.to_string var) cases
   | Pushtrap ((pc, args), _, (pc2, args2)) ->
-    let branch = compile_branch ctx pc args in
-    let block = compile_block ctx pc in
-    let handler = compile_branch ctx pc2 args2 in
-    let handler_block = compile_block ctx pc2 in
+    (* TODO: maybe(?) better fresh detection *)
+    let branch = compile_branch ctx pc args false in
+    let block = compile_block ctx pc |> fst in
+    let handler = compile_branch ctx pc2 args2 false in
+    let handler_block = compile_block ctx pc2 |> fst in
     Printf.sprintf
       "  %s\n\
        %s\n\
@@ -181,8 +189,8 @@ and compile_last ctx (last, _) =
       handler
       handler_block
   | Poptrap (pc, args) ->
-    let branch = compile_branch ctx pc args in
-    let block = compile_block ctx pc in
+    let branch = compile_branch ctx pc args false in
+    let block = compile_block ctx pc |> fst in
     Printf.sprintf "  %s\n  %s\ncaml_poptrap();" branch block
 
 and compile_constant c =

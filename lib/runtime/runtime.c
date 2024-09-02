@@ -78,7 +78,7 @@ value caml_putc(value c) {
   return Val_unit;
 }
 
-value caml_getc(value) { return Val_int(getchar()); }
+value caml_getc(value _) { return Val_int(getchar()); }
 
 #define Val_bool(x) ((x) ? Val_int(1) : Val_int(0))
 #define Bool_val(v) (Int_val(v) != 0)
