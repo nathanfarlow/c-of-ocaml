@@ -73,19 +73,71 @@ value caml_alloc(natint size, uchar tag, ...) {
 #define Field(v, i) (((block *)(v))->data[i])
 #define Str_val(v) ((char *)&Field(v, 1))
 
-#include <stdio.h>
 value weeeee(value s) {
   puts(Str_val(s));
   return Val_unit;
 }
-
-// TODO: don't allocate empty list
-value caml_ml_out_channels_list(value unit) { return caml_alloc(0, Tag_tuple); }
 // free: 0, params: 0
 value closure_0(value *env) {
 
 block_0: //
-  value a = weeeee(caml_copy_string("hello"));
+
+  goto block_61;
+block_61: //
+
+  goto block_173;
+block_173: //
+
+  goto block_213;
+block_213: //
+
+  goto block_236;
+block_236: //
+
+  goto block_199;
+block_199: //
+
+  goto block_234;
+block_234: //
+
+  goto block_116;
+block_116: //
+  value a = Val_int(0);
+  value b = a;
+  c = b;
+
+  goto block_128;
+block_128: // c
+  value d = caml_string_unsafe_get(caml_copy_string("hello world!"), c);
+
+  goto block_238;
+block_238: //
+
+  goto block_194;
+block_194: //
+  value e = caml_putc(d);
+
+  goto block_237;
+block_237: //
+  value f = % int_add(c, Val_int(1));
+  value g = Val_bool(Val_int(11) != c);
+  if (g) {
+    value h = f;
+    c = h;
+
+    goto block_128;
+  } else {
+    goto block_144;
+  }
+
+block_144: //
+
+  goto block_233;
+block_233: //
+  value i = caml_putc(Val_int(10));
+
+  goto block_235;
+block_235: //
   return Val_unit;
 }
 

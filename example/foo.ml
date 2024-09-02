@@ -20,4 +20,14 @@
 (*     | Some s -> weeeee s) *)
 (* ;; *)
 
-let () = weeeee "hello"
+(* let () = weeeee "hello" *)
+
+let print_endline s =
+  String.iter s ~f:putc;
+  putc '\n'
+;;
+
+let () =
+  let msg = "hello world!" in
+  print_endline msg
+;;

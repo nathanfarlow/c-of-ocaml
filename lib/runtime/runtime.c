@@ -73,11 +73,7 @@ value caml_alloc(natint size, uchar tag, ...) {
 #define Field(v, i) (((block *)(v))->data[i])
 #define Str_val(v) ((char *)&Field(v, 1))
 
-#include <stdio.h>
 value weeeee(value s) {
   puts(Str_val(s));
   return Val_unit;
 }
-
-// TODO: don't allocate empty list
-value caml_ml_out_channels_list(value unit) { return caml_alloc(0, Tag_tuple); }
