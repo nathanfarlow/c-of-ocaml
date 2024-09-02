@@ -73,14 +73,28 @@ value caml_alloc(natint size, uchar tag, ...) {
 #define Field(v, i) (((block *)(v))->data[i])
 #define Str_val(v) ((char *)&Field(v, 1))
 
-value weeeee(value s) {
-  puts(Str_val(s));
+value caml_putc(value c) {
+  putchar(Int_val(c));
   return Val_unit;
+}
+
+value caml_getc(value) { return Val_int(getchar()); }
+
+#define Val_bool(x) ((x) ? Val_int(1) : Val_int(0))
+#define Bool_val(v) (Int_val(v) != 0)
+
+value caml_string_unsafe_get(value s, value i) {
+  char c = Str_val(s)[Int_val(i)];
+  return Val_int(c);
 }
 // free: 0, params: 0
 value closure_0(value *env) {
 
 block_0: //
+  value a = Val_unit;
+  value b = caml_copy_string("hello");
+  value c = caml_alloc(2, 0, caml_alloc(1, 0, caml_copy_string("world")),
+                       caml_alloc(2, 0, Val_int(0), Val_int(0)));
 
   goto block_61;
 block_61: //
@@ -88,57 +102,115 @@ block_61: //
   goto block_173;
 block_173: //
 
-  goto block_213;
-block_213: //
+  goto block_247;
+block_247: //
+  value d = caml_alloc_closure(closure_233, 1)
 
-  goto block_236;
-block_236: //
+                d->env[0] = a;
+  value e = caml_alloc(1, 0, b);
+  value f = caml_alloc(2, 0, e, c);
 
-  goto block_199;
-block_199: //
+  goto block_287;
+block_287: //
+  value g = f;
+  h = g;
 
-  goto block_234;
-block_234: //
+  goto block_197;
+block_197: // h
+  if (Bool_val(h)) {
+    goto block_200;
+  } else {
+    goto block_212;
+  }
+block_200: //
+  value i = Field(h, 1);
+  value j = Field(h, 0);
+
+  goto block_291;
+block_291: //
+
+  goto block_215;
+block_215: //
+  if (Bool_val(j)) {
+    goto block_218;
+  } else {
+    goto block_224;
+  }
+block_218: //
+  value k = Field(j, 0);
+  value l = caml_call1(d, k) // exact;
+
+      goto block_290;
+block_290: //
+  value m = i;
+  h = m;
+
+  goto block_197;
+
+block_224:                   //
+  value n = caml_call1(d, b) // exact;
+
+      goto block_290;
+
+block_212: //
+
+  goto block_286;
+block_286: //
+  return Val_unit;
+}
+
+// free: 1, params: 1
+value closure_233(value *env) {
+  value a = env[0];
+  value o = env[1];
+
+block_233: //
+
+  goto block_285;
+block_285: //
 
   goto block_116;
 block_116: //
-  value a = Val_int(0);
-  value b = a;
-  c = b;
+  value p = caml_ml_string_length(o);
+  value q = Val_int(0);
+  value r = Val_int(Int_val(p) + Int_val(Val_int(-1)));
+  value s = Val_bool(Int_val(r) < Int_val(Val_int(0)));
+  if (Bool_val(s)) {
+    goto block_144;
+  } else {
+    value t = q;
+    u = t;
 
-  goto block_128;
-block_128: // c
-  value d = caml_string_unsafe_get(caml_copy_string("hello world!"), c);
+    goto block_128;
+  }
+block_144: //
 
-  goto block_238;
-block_238: //
+  goto block_284;
+block_284: //
+  value v = caml_putc(Val_int(10));
+  return a;
+block_128: // u
+  value w = caml_string_unsafe_get(o, u);
 
-  goto block_194;
-block_194: //
-  value e = caml_putc(d);
+  goto block_289;
+block_289: //
 
-  goto block_237;
-block_237: //
-  value f = % int_add(c, Val_int(1));
-  value g = Val_bool(Val_int(11) != c);
-  if (g) {
-    value h = f;
-    c = h;
+  goto block_228;
+block_228: //
+  value x = caml_putc(w);
+
+  goto block_288;
+block_288: //
+  value y = Val_int(Int_val(u) + Int_val(Val_int(1)));
+  value z = Val_bool(r != u);
+  if (Bool_val(z)) {
+    value A = y;
+    u = A;
 
     goto block_128;
   } else {
     goto block_144;
   }
-
-block_144: //
-
-  goto block_233;
-block_233: //
-  value i = caml_putc(Val_int(10));
-
-  goto block_235;
-block_235: //
-  return Val_unit;
 }
 
 int main() {

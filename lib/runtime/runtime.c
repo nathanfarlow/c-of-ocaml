@@ -73,7 +73,17 @@ value caml_alloc(natint size, uchar tag, ...) {
 #define Field(v, i) (((block *)(v))->data[i])
 #define Str_val(v) ((char *)&Field(v, 1))
 
-value weeeee(value s) {
-  puts(Str_val(s));
+value caml_putc(value c) {
+  putchar(Int_val(c));
   return Val_unit;
+}
+
+value caml_getc(value) { return Val_int(getchar()); }
+
+#define Val_bool(x) ((x) ? Val_int(1) : Val_int(0))
+#define Bool_val(v) (Int_val(v) != 0)
+
+value caml_string_unsafe_get(value s, value i) {
+  char c = Str_val(s)[Int_val(i)];
+  return Val_int(c);
 }

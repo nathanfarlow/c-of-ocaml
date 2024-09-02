@@ -101,7 +101,7 @@ and compile_instr ctx (instr, _) =
   | Offset_ref (var, n) -> Printf.sprintf "  Field(%s, 0) += %d;" (Var.to_string var) n
   | Array_set (arr, idx, value) ->
     Printf.sprintf
-      "  Field(%s, Long_val(%s)) = %s;"
+      "  Field(%s, Int_val(%s)) = %s;"
       (Var.to_string arr)
       (Var.to_string idx)
       (Var.to_string value)
@@ -150,7 +150,7 @@ and compile_last ctx (last, _) =
     let true_block = compile_block ctx pc1 in
     let false_block = compile_block ctx pc2 in
     Printf.sprintf
-      "  if (%s) { %s } else { %s }\n%s\n%s"
+      "  if (Bool_val(%s)) { %s } else { %s }\n%s\n%s"
       (Var.to_string var)
       true_branch
       false_branch
@@ -165,7 +165,7 @@ and compile_last ctx (last, _) =
       |> Array.to_list
       |> String.concat ~sep:"\n"
     in
-    Printf.sprintf "  switch (Long_val(%s)) {\n%s\n  }" (Var.to_string var) cases
+    Printf.sprintf "  switch (Int_val(%s)) {\n%s\n  }" (Var.to_string var) cases
   | Pushtrap ((pc, args), _, (pc2, args2)) ->
     let branch = compile_branch ctx pc args in
     let block = compile_block ctx pc in
@@ -210,13 +210,11 @@ and compile_constant c =
 
 and compile_prim prim args =
   match prim, args with
-  | Vectlength, [ x ] -> Printf.sprintf "Long_val(%s)" (compile_prim_arg x)
+  | Vectlength, [ x ] -> Printf.sprintf "Int_val(%s)" (compile_prim_arg x)
   | Array_get, [ arr; idx ] ->
-    Printf.sprintf "Field(%s, Long_val(%s))" (compile_prim_arg arr) (compile_prim_arg idx)
+    Printf.sprintf "Field(%s, Int_val(%s))" (compile_prim_arg arr) (compile_prim_arg idx)
   | Extern "%undefined", _ -> "/* undefined */ Val_unit"
-  | Extern name, args ->
-    let args_str = List.map args ~f:compile_prim_arg |> String.concat ~sep:", " in
-    Printf.sprintf "%s(%s)" name args_str
+  | Extern name, args -> compile_extern name args
   | Not, [ x ] -> Printf.sprintf "Val_bool(!Bool_val(%s))" (compile_prim_arg x)
   | IsInt, [ x ] -> Printf.sprintf "Val_bool(Is_long(%s))" (compile_prim_arg x)
   | Eq, [ x; y ] ->
@@ -225,20 +223,78 @@ and compile_prim prim args =
     Printf.sprintf "Val_bool(%s != %s)" (compile_prim_arg x) (compile_prim_arg y)
   | Lt, [ x; y ] ->
     Printf.sprintf
-      "Val_bool(Long_val(%s) < Long_val(%s))"
+      "Val_bool(Int_val(%s) < Int_val(%s))"
       (compile_prim_arg x)
       (compile_prim_arg y)
   | Le, [ x; y ] ->
     Printf.sprintf
-      "Val_bool(Long_val(%s) <= Long_val(%s))"
+      "Val_bool(Int_val(%s) <= Int_val(%s))"
       (compile_prim_arg x)
       (compile_prim_arg y)
   | Ult, [ x; y ] ->
     Printf.sprintf
-      "Val_bool((uintnat)Long_val(%s) < (uintnat)Long_val(%s))"
+      "Val_bool((uintnat)Int_val(%s) < (uintnat)Int_val(%s))"
       (compile_prim_arg x)
       (compile_prim_arg y)
   | _ -> Printf.sprintf "/* Unhandled primitive :O */"
+
+and compile_extern name args =
+  match name, args with
+  | "%int_add", [ a; b ] ->
+    Printf.sprintf
+      "Val_int(Int_val(%s) + Int_val(%s))"
+      (compile_prim_arg a)
+      (compile_prim_arg b)
+  | "%int_sub", [ a; b ] ->
+    Printf.sprintf
+      "Val_int(Int_val(%s) - Int_val(%s))"
+      (compile_prim_arg a)
+      (compile_prim_arg b)
+  | "%direct_int_mul", [ a; b ] ->
+    Printf.sprintf
+      "Val_int(Int_val(%s) * Int_val(%s))"
+      (compile_prim_arg a)
+      (compile_prim_arg b)
+  | "%direct_int_div", [ a; b ] ->
+    Printf.sprintf
+      "Val_int(Int_val(%s) / Int_val(%s))"
+      (compile_prim_arg a)
+      (compile_prim_arg b)
+  | "%direct_int_mod", [ a; b ] ->
+    Printf.sprintf
+      "Val_int(Int_val(%s) %% Int_val(%s))"
+      (compile_prim_arg a)
+      (compile_prim_arg b)
+  | "%int_and", [ a; b ] ->
+    Printf.sprintf "(%s) & (%s)" (compile_prim_arg a) (compile_prim_arg b)
+  | "%int_or", [ a; b ] ->
+    Printf.sprintf "(%s) | (%s)" (compile_prim_arg a) (compile_prim_arg b)
+  | "%int_xor", [ a; b ] ->
+    Printf.sprintf "(%s) ^ (%s)" (compile_prim_arg a) (compile_prim_arg b)
+  | "%int_lsl", [ a; b ] ->
+    Printf.sprintf
+      "Val_int(Int_val(%s) << Int_val(%s))"
+      (compile_prim_arg a)
+      (compile_prim_arg b)
+  | "%int_lsr", [ a; b ] ->
+    Printf.sprintf
+      "Val_int((unsigned long)Int_val(%s) >> Int_val(%s))"
+      (compile_prim_arg a)
+      (compile_prim_arg b)
+  | "%int_asr", [ a; b ] ->
+    Printf.sprintf
+      "Val_int(Int_val(%s) >> Int_val(%s))"
+      (compile_prim_arg a)
+      (compile_prim_arg b)
+  | "%int_neg", [ a ] -> Printf.sprintf "Val_int(-Int_val(%s))" (compile_prim_arg a)
+  | "%caml_format_int_special", [ a ] ->
+    Printf.sprintf "caml_format_int(\"%s\", %s)" "%d" (compile_prim_arg a)
+  | "%direct_obj_tag", [ a ] -> Printf.sprintf "Tag_val(%s)" (compile_prim_arg a)
+  | "caml_array_unsafe_get", [ arr; idx ] ->
+    Printf.sprintf "Field(%s, Int_val(%s))" (compile_prim_arg arr) (compile_prim_arg idx)
+  | _ ->
+    let args_str = List.map args ~f:compile_prim_arg |> String.concat ~sep:", " in
+    Printf.sprintf "%s(%s)" name args_str
 
 and compile_prim_arg = function
   | Pv var -> Var.to_string var
