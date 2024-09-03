@@ -1,0 +1,41 @@
+(executable
+ (name main)
+ (libraries stdlib)
+ (modes byte))
+
+(rule
+ (targets main.unformatted.c)
+ (action
+  (with-stdout-to
+   %{targets}
+   (run %{bin:c_of_ocaml} %{dep:main.bc}))))
+
+(rule
+ (target main.combined.c)
+ (deps
+  (:runtime %{project_root}/lib/runtime/runtime.c)
+  main.unformatted.c)
+ (action
+  (with-stdout-to
+   %{target}
+   (bash "cat %{runtime} %{dep:main.unformatted.c}"))))
+
+(rule
+ (target main.c)
+ (mode promote)
+ (deps main.combined.c)
+ (action
+  (with-stdout-to
+   %{target}
+   (run clang-format %{deps}))))
+
+(rule
+ (target main.c.exe)
+ (mode promote)
+ (deps main.c)
+ (action
+  (run gcc -Og -g -o main.c.exe %{deps})))
+
+(alias
+ (name default)
+ (deps main.c.exe))

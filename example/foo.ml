@@ -9,7 +9,6 @@ let print_int n = Int.to_string n |> print_endline
 let rec fib k = if k < 2 then 1 else fib (k - 1) + fib (k - 2)
 
 let () =
-  for i = 0 to 10 do
-    print_int (fib i)
-  done
+  let n = 60 in
+  print_int (fib n)
 ;;
