@@ -85,7 +85,7 @@ let rec compile_closure ctx closure =
   let num_free = List.length closure.free_vars in
   let num_params = List.length closure.params in
   let comment = Printf.sprintf "// free: %d, params: %d" num_free num_params in
-  Printf.printf
+  Printf.sprintf
     "%s\n%s {\n%s\n%s\n%s\n%s\n}\n\n"
     comment
     signature
@@ -360,8 +360,14 @@ let f prog =
   let ctx =
     { prog; visited = Hash_set.create (module Int); closures = find_closures prog }
   in
-  Hashtbl.iter ctx.closures ~f:(fun closure ->
-    Printf.printf "value closure_%d(value* env);\n" closure.pc);
-  Hashtbl.iter ctx.closures ~f:(compile_closure ctx);
-  Printf.printf "int main() {\n  closure_%d(NULL);\n  return 0;\n}\n" prog.start
+  let l =
+    Hashtbl.data ctx.closures
+    |> List.map ~f:(fun closure ->
+      Printf.sprintf "value closure_%d(value* env);\n" closure.pc)
+  in
+  let l2 = Hashtbl.data ctx.closures |> List.map ~f:(compile_closure ctx) in
+  let l3 =
+    [ Printf.sprintf "int main() {\n  closure_%d(NULL);\n  return 0;\n}\n" prog.start ]
+  in
+  String.concat ~sep:"\n" (l @ l2 @ l3)
 ;;

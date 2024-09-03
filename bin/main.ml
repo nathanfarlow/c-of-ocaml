@@ -9,7 +9,8 @@ let command =
        =
        anon ("INPUT_FILE" %: Filename_unix.arg_type)
      in
-     fun () -> In_channel.create input_file |> Coo.Driver.go)
+     fun () ->
+       In_channel.create input_file |> Coo.Driver.go |> Out_channel.output_string stdout)
 ;;
 
 let () = Command_unix.run command
