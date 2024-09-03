@@ -5,25 +5,11 @@ let print_endline s =
   putc '\n'
 ;;
 
-let print_int n =
-  let lookup = "0123456789" in
-  let rec print_int n =
-    if n < 10
-    then putc lookup.[n]
-    else (
-      print_int (n / 10);
-      putc lookup.[n mod 10])
-  in
-  if n < 0
-  then (
-    putc '-';
-    print_int (-n))
-  else print_int n
-;;
+let print_int n = Int.to_string n |> print_endline
+let rec fib k = if k < 2 then 1 else fib (k - 1) + fib (k - 2)
 
 let () =
-  let open Fixed in
-  let a = of_int 1 / of_int 3 in
-  let b = of_int 10000 in
-  print_int (to_int (a * b))
+  for i = 0 to 10 do
+    print_int (fib i)
+  done
 ;;

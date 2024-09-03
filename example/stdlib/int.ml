@@ -43,23 +43,24 @@ external shift_right : int -> int -> int = "%asrint"
 external shift_right_logical : int -> int -> int = "%lsrint"
 
 let equal : int -> int -> bool = ( = )
-let compare : int -> int -> int = Stdlib.compare
+
+external compare : int -> int -> int = "%compare"
+
 let min x y : t = if x <= y then x else y
 let max x y : t = if x >= y then x else y
 
-external to_float : int -> float = "%floatofint"
-external of_float : float -> int = "%intoffloat"
-
-(*
-   external int_of_string : string -> int = "caml_int_of_string"
-   let of_string s = try Some (int_of_string s) with Failure _ -> None
-*)
-
-external format_int : string -> int -> string = "caml_format_int"
-
-let to_string x = format_int "%d" x
-
-external seeded_hash_param : int -> int -> int -> 'a -> int = "caml_hash" [@@noalloc]
-
-let seeded_hash seed x = seeded_hash_param 10 100 seed x
-let hash x = seeded_hash_param 10 100 0 x
+let to_string i =
+  let rec aux n acc =
+    if n = 0
+    then acc
+    else (
+      let digit = abs (n mod 10) in
+      let char = Char.of_int (digit + 48) in
+      aux (n / 10) (char :: acc))
+  in
+  if i = 0
+  then "0"
+  else (
+    let sign = if i < 0 then "-" else "" in
+    sign ^ (aux i [] |> List.map ~f:(String.make 1) |> String.concat ~sep:""))
+;;

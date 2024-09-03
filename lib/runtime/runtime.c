@@ -150,3 +150,52 @@ value caml_string_unsafe_get(value s, value i) {
   char c = Str_val(s)[Int_val(i)];
   return Val_int(c);
 }
+
+value caml_raise(value v) {
+  fprintf(stderr, "Exception raised: %ld\n", Int_val(v));
+  exit(1);
+}
+
+value caml_create_bytes(value len) {
+  unatint num_values_for_string = len / sizeof(value) + 1;
+  block *b = caml_alloc_block(num_values_for_string + 1, Tag_string);
+  b->data[0] = Val_int(len);
+  return (value)b;
+}
+
+value caml_bytes_unsafe_set(value s, value i, value c) {
+  Str_val(s)[Int_val(i)] = Int_val(c);
+  return Val_unit;
+}
+
+value caml_string_of_bytes(value s) { return s; }
+
+value caml_string_concat(value s1, value s2) {
+  unatint len1 = Int_val(Field(s1, 0));
+  unatint len2 = Int_val(Field(s2, 0));
+  unatint total_len = len1 + len2;
+  value new_string = caml_create_bytes(Val_int(total_len));
+  memcpy(Str_val(new_string), Str_val(s1), len1);
+  memcpy(Str_val(new_string) + len1, Str_val(s2), len2);
+  return new_string;
+}
+
+value caml_bytes_of_string(value s) { return s; }
+
+value caml_ml_bytes_length(value s) { return Field(s, 0); }
+
+value caml_blit_bytes(value src, value src_pos, value dst, value dst_pos,
+                      value len) {
+  unatint src_len = Field(src, 0);
+  unatint dst_len = Field(dst, 0);
+  unatint src_pos_val = Int_val(src_pos);
+  unatint dst_pos_val = Int_val(dst_pos);
+  unatint len_val = Int_val(len);
+
+  if (src_pos_val + len_val > src_len || dst_pos_val + len_val > dst_len) {
+    caml_raise(len);
+  }
+
+  memcpy(Str_val(dst) + dst_pos_val, Str_val(src) + src_pos_val, len_val);
+  return Val_unit;
+}

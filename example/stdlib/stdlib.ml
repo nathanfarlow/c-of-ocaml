@@ -38,19 +38,12 @@ external __POS_OF__ : 'a -> (string * int * int * int) * 'a = "%loc_POS"
 
 (* Comparisons *)
 
-external ( = ) : 'a -> 'a -> bool = "%equal"
-external ( <> ) : 'a -> 'a -> bool = "%notequal"
-external ( < ) : 'a -> 'a -> bool = "%lessthan"
-external ( > ) : 'a -> 'a -> bool = "%greaterthan"
-external ( <= ) : 'a -> 'a -> bool = "%lessequal"
-external ( >= ) : 'a -> 'a -> bool = "%greaterequal"
-external compare : 'a -> 'a -> int = "%compare"
-
-let min x y = if x <= y then x else y
-let max x y = if x >= y then x else y
-
-external ( == ) : 'a -> 'a -> bool = "%eq"
-external ( != ) : 'a -> 'a -> bool = "%noteq"
+external ( = ) : int -> int -> bool = "%equal"
+external ( <> ) : int -> int -> bool = "%notequal"
+external ( < ) : int -> int -> bool = "%lessthan"
+external ( > ) : int -> int -> bool = "%greaterthan"
+external ( <= ) : int -> int -> bool = "%lessequal"
+external ( >= ) : int -> int -> bool = "%greaterequal"
 
 (* Boolean operations *)
 
@@ -86,13 +79,9 @@ let max_int = -1 lsr 1
 let min_int = max_int + 1
 
 external string_length : string -> int = "%string_length"
-external bytes_length : bytes -> int = "%bytes_length"
 external bytes_create : int -> bytes = "caml_create_bytes"
 
 external string_blit : string -> int -> bytes -> int -> int -> unit = "caml_blit_string"
-[@@noalloc]
-
-external bytes_blit : bytes -> int -> bytes -> int -> int -> unit = "caml_blit_bytes"
 [@@noalloc]
 
 external bytes_unsafe_to_string : bytes -> string = "%bytes_to_string"
@@ -106,13 +95,12 @@ let ( ^ ) s1 s2 =
   bytes_unsafe_to_string s
 ;;
 
-(* Character operations -- more in module Char *)
-
-external int_of_char : char -> int = "%identity"
-external unsafe_char_of_int : int -> char = "%identity"
-
-let char_of_int n =
-  if n < 0 || n > 255 then invalid_arg "char_of_int" else unsafe_char_of_int n
+let[@tail_mod_cons] rec ( @ ) l1 l2 =
+  match l1 with
+  | [] -> l2
+  | h1 :: [] -> h1 :: l2
+  | [ h1; h2 ] -> h1 :: h2 :: l2
+  | h1 :: h2 :: h3 :: tl -> h1 :: h2 :: h3 :: (tl @ l2)
 ;;
 
 (* Unit operations *)
@@ -145,3 +133,6 @@ external getc : unit -> char = "caml_getc"
 
 module Int = Stdlib__Int
 module String = Stdlib__String
+module List = Stdlib__List
+module Char = Stdlib__Char
+module Bytes = Stdlib__Bytes

@@ -118,14 +118,6 @@ val max : int -> int -> int
 
 (** {1:convert Converting} *)
 
-(** [to_float x] is [x] as a floating point number. *)
-external to_float : int -> float = "%floatofint"
-
-(** [of_float x] truncates [x] to an integer. The result is
-    unspecified if the argument is [nan] or falls outside the range of
-    representable integers. *)
-external of_float : float -> int = "%intoffloat"
-
 (*
    val of_string : string -> int option
    (** [of_string s] is [Some s] if [s] can be parsed to an integer
@@ -150,17 +142,3 @@ external of_float : float -> int = "%intoffloat"
 
 (** [to_string x] is the written representation of [x] in decimal. *)
 val to_string : int -> string
-
-(** A seeded hash function for ints, with the same output value as
-    {!Hashtbl.seeded_hash}. This function allows this module to be passed as
-    argument to the functor {!Hashtbl.MakeSeeded}.
-
-    @since 5.1 *)
-val seeded_hash : int -> int -> int
-
-(** An unseeded hash function for ints, with the same output value as
-    {!Hashtbl.hash}. This function allows this module to be passed as argument
-    to the functor {!Hashtbl.Make}.
-
-    @since 5.1 *)
-val hash : int -> int

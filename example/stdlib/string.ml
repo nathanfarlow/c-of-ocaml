@@ -17,8 +17,7 @@ external length : string -> int = "%string_length"
 external unsafe_get : string -> int -> char = "%string_unsafe_get"
 
 let get s i =
-  (* if i < 0 || i >= length s then raise (Invalid_argument "String.get") else unsafe_get s i *)
-  unsafe_get s i
+  if i < 0 || i >= length s then raise (Invalid_argument "String.get") else unsafe_get s i
 ;;
 
 let iter s ~f =
@@ -29,3 +28,18 @@ let iter s ~f =
 ;;
 
 type t = string
+
+let concat ?(sep = "") l =
+  match l with
+  | [] -> ""
+  | [ x ] -> x
+  | x :: xs -> List.fold_left ~f:(fun acc s -> acc ^ sep ^ s) x xs
+;;
+
+let make n c =
+  let s = Bytes.create n in
+  for i = 0 to n - 1 do
+    Bytes.unsafe_set s i c
+  done;
+  Bytes.unsafe_to_string s
+;;
