@@ -157,11 +157,12 @@ value closure_0(value *env);
 value closure_233(value *env);
 // free: 0, params: 0
 value closure_0(value *env) {
+  value a;
 
 block_0: //
-  value a = Val_unit;
-  value b = caml_copy_string("hello");
-  value c = caml_alloc(2, 0, caml_alloc(1, 0, caml_copy_string("world")),
+  value b = Val_unit /* aka undefined */;
+  value c = caml_copy_string("hello");
+  value d = caml_alloc(2, 0, caml_alloc(1, 0, caml_copy_string("world")),
                        caml_alloc(2, 0, Val_int(0), Val_int(0)));
 
 block_61: //
@@ -169,24 +170,24 @@ block_61: //
 block_173: //
 
 block_247: //
-  value d = caml_alloc_closure(closure_233, 1, 1, a);
+  value e = caml_alloc_closure(closure_233, 1, 1, b);
 
-  value e = caml_alloc(1, 0, b);
-  value f = caml_alloc(2, 0, e, c);
+  value f = caml_alloc(1, 0, c);
+  value g = caml_alloc(2, 0, f, d);
 
 block_287: //
-  value n = f;
-  value g = n;
+  value n = g;
+  a = n;
 
-block_197: // g
-  if (Bool_val(g)) {
+block_197: // a
+  if (Bool_val(a)) {
     goto block_200;
   } else {
     goto block_212;
   }
 block_200: //
-  value h = Field(g, 1);
-  value i = Field(g, 0);
+  value h = Field(a, 1);
+  value i = Field(a, 0);
 
 block_291: //
 
@@ -198,16 +199,16 @@ block_215: //
   }
 block_218: //
   value j = Field(i, 0);
-  value k = caml_call(d, 1, j) /* exact */;
+  value k = caml_call(e, 1, j) /* exact */;
 
 block_290: //
   value l = h;
-  g = h;
+  a = h;
 
   goto block_197;
 
 block_224: //
-  value m = caml_call(d, 1, b) /* exact */;
+  value m = caml_call(e, 1, c) /* exact */;
 
   goto block_290;
 
@@ -219,24 +220,24 @@ block_286: //
 
 // free: 1, params: 1
 value closure_233(value *env) {
-  value a = env[0];
-  value o = env[1];
+  value o;
+  value b = env[0];
+  value p = env[1];
 
 block_233: //
 
 block_285: //
 
 block_116: //
-  value p = caml_ml_string_length(o);
-  value q = Val_int(0);
-  value r = Val_int(Int_val(p) + Int_val(Val_int(-1)));
-  value s = Val_bool(Int_val(r) < Int_val(Val_int(0)));
-  value u;
-  if (Bool_val(s)) {
+  value q = caml_ml_string_length(p);
+  value r = Val_int(0);
+  value s = Val_int(Int_val(q) + Int_val(Val_int(-1)));
+  value t = Val_bool(Int_val(s) < Int_val(Val_int(0)));
+  if (Bool_val(t)) {
     goto block_144;
   } else {
-    value t = q;
-    u = q;
+    value u = r;
+    o = r;
 
     goto block_128;
   }
@@ -244,9 +245,9 @@ block_144: //
 
 block_284: //
   value v = caml_putc(Val_int(10));
-  return a;
-block_128: // u
-  value w = caml_string_unsafe_get(o, u);
+  return b;
+block_128: // o
+  value w = caml_string_unsafe_get(p, o);
 
 block_289: //
 
@@ -254,11 +255,11 @@ block_228: //
   value x = caml_putc(w);
 
 block_288: //
-  value y = Val_int(Int_val(u) + Int_val(Val_int(1)));
-  value z = Val_bool(r != u);
+  value y = Val_int(Int_val(o) + Int_val(Val_int(1)));
+  value z = Val_bool(s != o);
   if (Bool_val(z)) {
     value A = y;
-    u = y;
+    o = y;
 
     goto block_128;
   } else {

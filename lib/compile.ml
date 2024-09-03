@@ -40,7 +40,7 @@ let rename ctx pc args ~is_fresh =
       let arg = Var.to_string arg in
       let second =
         match is_fresh with
-        | true -> Printf.sprintf "value %s = %s;" param fresh
+        | true -> Printf.sprintf "%s = %s;" param fresh
         | false -> Printf.sprintf "%s = %s;" param arg
       in
       [ Printf.sprintf "value %s = %s;" fresh arg; second ])
@@ -52,7 +52,36 @@ let rec compile_closure ctx closure =
   let all_params = closure.free_vars @ closure.params in
   let func_name = Printf.sprintf "closure_%d" closure.pc in
   let signature = Printf.sprintf "value %s(value* env)" func_name in
+  (* Collect all block parameters in the closure *)
+  let block_params = Hash_set.create (module String) in
+  let rec collect_block_params pc =
+    if not (Hash_set.mem ctx.visited pc)
+    then (
+      Hash_set.add ctx.visited pc;
+      let block = Addr.Map.find pc ctx.prog.blocks in
+      List.iter block.params ~f:(fun param ->
+        Hash_set.add block_params (Var.to_string param));
+      match block.branch with
+      | Branch (next_pc, _), _ -> collect_block_params next_pc
+      | Cond (_, (pc1, _), (pc2, _)), _ ->
+        collect_block_params pc1;
+        collect_block_params pc2
+      | Switch (_, arr), _ -> Array.iter arr ~f:(fun (pc, _) -> collect_block_params pc)
+      | Pushtrap ((pc1, _), _, (pc2, _)), _ ->
+        collect_block_params pc1;
+        collect_block_params pc2
+      | Poptrap (pc, _), _ -> collect_block_params pc
+      | _ -> ())
+  in
+  collect_block_params closure.pc;
+  Hash_set.clear ctx.visited;
+  (* Declare all block parameters at the top of the closure *)
   let var_decls =
+    Hash_set.to_list block_params
+    |> List.map ~f:(fun v -> Printf.sprintf "  value %s;" v)
+    |> String.concat ~sep:"\n"
+  in
+  let param_assignments =
     List.mapi all_params ~f:(fun i v ->
       Printf.sprintf "  value %s = env[%d];" (Var.to_string v) i)
     |> String.concat ~sep:"\n"
@@ -62,7 +91,14 @@ let rec compile_closure ctx closure =
   let num_free = List.length closure.free_vars in
   let num_params = List.length closure.params in
   let comment = Printf.sprintf "// free: %d, params: %d" num_free num_params in
-  Printf.printf "%s\n%s {\n%s\n%s\n%s\n}\n\n" comment signature var_decls renaming body
+  Printf.printf
+    "%s\n%s {\n%s\n%s\n%s\n%s\n}\n\n"
+    comment
+    signature
+    var_decls
+    param_assignments
+    renaming
+    body
 
 and compile_block ctx (pc : Addr.t) =
   if Hash_set.mem ctx.visited pc
@@ -130,7 +166,8 @@ and compile_expr _ctx expr =
   | Closure _ -> assert false
   | Special special ->
     (match special with
-     | Undefined -> "Val_unit" (* or some representation of OCaml's undefined *)
+     | Undefined ->
+       "Val_unit /* aka undefined */" (* or some representation of OCaml's undefined *)
      | Alias_prim name -> sprintf "/* Alias primitive: %s */" name)
 
 and compile_last ctx (last, _) =
