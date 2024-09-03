@@ -28,23 +28,17 @@ let find_closures program =
   |> Hashtbl.of_alist_exn (module Int)
 ;;
 
-let rename ctx pc args ~is_fresh =
+let rename ctx pc args ~is_fresh:_ =
   let block = Addr.Map.find pc ctx.prog.blocks in
   let params = block.params in
   List.map2_exn params args ~f:(fun param arg ->
     match Var.equal param arg with
-    | true -> []
+    | true -> None
     | false ->
-      let fresh = Var.fresh () |> Var.to_string in
       let param = Var.to_string param in
       let arg = Var.to_string arg in
-      let second =
-        match is_fresh with
-        | true -> Printf.sprintf "%s = %s;" param fresh
-        | false -> Printf.sprintf "%s = %s;" param arg
-      in
-      [ Printf.sprintf "value %s = %s;" fresh arg; second ])
-  |> List.concat
+      Some (Printf.sprintf "%s = %s;" param arg))
+  |> List.filter_opt
   |> String.concat_lines
 ;;
 
@@ -119,17 +113,20 @@ and compile_instr ctx (instr, _) =
     let closure_name = Printf.sprintf "closure_%d" pc in
     let var_name = Var.to_string var in
     let free_vars = Hashtbl.find_exn ctx.closures pc |> fun c -> c.free_vars in
-    let free_var_args = String.concat ~sep:", " (List.map free_vars ~f:Var.to_string) in
     let assignment =
       Printf.sprintf
-        "value %s = caml_alloc_closure(%s, %d, %d, %s);\n"
+        "value %s = caml_alloc_closure(%s, %d, %d);\n"
         var_name
         closure_name
         (List.length params)
         (List.length free_vars)
-        free_var_args
     in
-    assignment
+    let env_assignments =
+      List.map free_vars ~f:(fun fv ->
+        Printf.sprintf "  add_arg(%s, %s);" var_name (Var.to_string fv))
+      |> String.concat ~sep:"\n"
+    in
+    Printf.sprintf "%s%s" assignment env_assignments
   | Let (var, expr) ->
     Printf.sprintf "  value %s = %s;" (Var.to_string var) (compile_expr ctx expr)
   | Assign (var1, var2) ->

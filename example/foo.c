@@ -43,21 +43,18 @@ block *caml_alloc_block(unatint size, uchar tag) {
 }
 
 value caml_alloc_closure(value (*fun)(value *), unatint num_args,
-                         unatint num_env, ...) {
+                         unatint num_env) {
   block *b = caml_alloc_block(num_args + num_env + 3, Tag_closure);
   closure_t *c = (closure_t *)b->data;
   c->fun = fun;
-  c->args_idx = num_env;
+  c->args_idx = 0;
   c->total_args = num_args + num_env;
-
-  va_list args;
-  va_start(args, num_env);
-  for (unatint i = 0; i < num_env; i++) {
-    c->args[i] = va_arg(args, value);
-  }
-  va_end(args);
-
   return (value)b;
+}
+
+void add_arg(value closure, value arg) {
+  closure_t *c = (closure_t *)(((block *)closure)->data);
+  c->args[c->args_idx++] = arg;
 }
 
 value caml_call(value closure, unatint num_args, ...) {
@@ -154,43 +151,47 @@ value caml_string_unsafe_get(value s, value i) {
   return Val_int(c);
 }
 value closure_0(value *env);
+value closure_238(value *env);
+value closure_258(value *env);
 // free: 0, params: 0
 value closure_0(value *env) {
+  value b;
   value a;
 
 block_0: //
+  value c = Val_unit /* aka undefined */;
 
 block_111: //
 
-block_235: //
+block_217: //
 
-block_275: //
+block_334: //
+  value d = caml_alloc_closure(closure_238, 1, 1);
+  add_arg(d, d);
 
-block_298: //
+block_401: //
 
-block_261: //
+block_320: //
 
-block_296: //
+block_392: //
 
 block_178: //
-  value b = Val_int(0);
-  value i = b;
-  a = i;
+  value e = Val_int(0);
+  a = e;
 
 block_190: // a
-  value c = caml_string_unsafe_get(caml_copy_string("hello world!"), a);
+  value f = caml_string_unsafe_get(caml_copy_string("Fibonacci numbers:"), a);
 
-block_300: //
+block_403: //
 
-block_256: //
-  value d = caml_putc(c);
+block_315: //
+  value g = caml_putc(f);
 
-block_299: //
-  value e = Val_int(Int_val(a) + Int_val(Val_int(1)));
-  value f = Val_bool(Val_int(11) != a);
-  if (Bool_val(f)) {
-    value g = e;
-    a = e;
+block_402: //
+  value h = Val_int(Int_val(a) + Int_val(Val_int(1)));
+  value i = Val_bool(Val_int(17) != a);
+  if (Bool_val(i)) {
+    a = h;
 
     goto block_190;
   } else {
@@ -199,11 +200,114 @@ block_299: //
 
 block_206: //
 
-block_295: //
-  value h = caml_putc(Val_int(10));
+block_391: //
+  value j = caml_putc(Val_int(10));
 
-block_297: //
+block_400: //
+  value k = Val_int(0);
+  b = k;
+
+block_358: // b
+  value l = caml_call(d, 1, b) /* exact */;
+
+block_399: //
+
+block_291: //
+  value m = caml_alloc_closure(closure_258, 1, 2);
+  add_arg(m, c);
+  add_arg(m, m);
+  value n = Val_bool(Int_val(Val_int(0)) <= Int_val(l));
+  if (Bool_val(n)) {
+    goto block_311;
+  } else {
+    goto block_302;
+  }
+block_311: //
+  value o = caml_call(m, 1, l) /* exact */;
+
+block_398: //
+  value p = caml_putc(Val_int(10));
+  value q = Val_int(Int_val(b) + Int_val(Val_int(1)));
+  value r = Val_bool(Val_int(40) != b);
+  if (Bool_val(r)) {
+    b = q;
+
+    goto block_358;
+  } else {
+    goto block_378;
+  }
+
+block_378: //
   return Val_unit;
+block_302: //
+  value s = caml_putc(Val_int(45));
+  value t = Val_int(-Int_val(l));
+  value u = caml_call(m, 1, t) /* exact */;
+
+  goto block_398;
+}
+
+// free: 1, params: 1
+value closure_238(value *env) {
+
+  value d = env[0];
+  value v = env[1];
+
+block_238: //
+  value w = Val_bool(Int_val(Val_int(2)) <= Int_val(v));
+  if (Bool_val(w)) {
+    goto block_245;
+  } else {
+    goto block_242;
+  }
+block_245: //
+  value x = Val_int(Int_val(v) + Int_val(Val_int(-2)));
+  value y = caml_call(d, 1, x) /* exact */;
+  value z = Val_int(Int_val(v) + Int_val(Val_int(-1)));
+  value A = caml_call(d, 1, z) /* exact */;
+  value B = Val_int(Int_val(A) + Int_val(y));
+  return B;
+block_242: //
+  return v;
+}
+
+// free: 2, params: 1
+value closure_258(value *env) {
+
+  value c = env[0];
+  value m = env[1];
+  value C = env[2];
+
+block_258: //
+  value D = Val_bool(Int_val(Val_int(10)) <= Int_val(C));
+  if (Bool_val(D)) {
+    goto block_272;
+  } else {
+    goto block_262;
+  }
+block_272: //
+  value E = Val_int(Int_val(C) / Int_val(Val_int(10)));
+  value F = caml_call(m, 1, E) /* exact */;
+  value G = Val_int(Int_val(C) % Int_val(Val_int(10)));
+
+block_395: //
+
+block_393: //
+  value H = caml_string_unsafe_get(caml_copy_string("0123456789"), G);
+
+block_394: //
+  value I = caml_putc(H);
+  return c;
+block_262: //
+
+block_397: //
+
+block_212: //
+  value J = caml_string_unsafe_get(caml_copy_string("0123456789"), C);
+
+block_396: //
+  value K = caml_putc(J);
+  return c;
 }
 
 int main() {

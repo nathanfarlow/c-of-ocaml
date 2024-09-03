@@ -3,27 +3,28 @@ let print_endline s =
   putc '\n'
 ;;
 
-(* type opt = *)
-(*   | None *)
-(*   | Some of string *)
+let print_int n =
+  let lookup = "0123456789" in
+  let rec print_int n =
+    if n < 10
+    then putc lookup.[n]
+    else (
+      print_int (n / 10);
+      putc lookup.[n mod 10])
+  in
+  if n < 0
+  then (
+    putc '-';
+    print_int (-n))
+  else print_int n
+;;
 
-(* let rec iter l ~f = *)
-(*   match l with *)
-(*   | [] -> () *)
-(*   | hd :: tl -> *)
-(*     f hd; *)
-(*     iter tl ~f *)
-(* ;; *)
-
-(* let () = *)
-(*   let f = "hello" in *)
-(*   let _l = [ Some f; Some "world"; None ] in *)
-(*   iter _l ~f:(function *)
-(*     | None -> print_endline f *)
-(*     | Some s -> print_endline s) *)
-(* ;; *)
+let rec fib k = if k < 2 then k else fib (k - 1) + fib (k - 2)
 
 let () =
-  let msg = "hello world!" in
-  print_endline msg
+  print_endline "Fibonacci numbers:";
+  for i = 0 to 40 do
+    print_int (fib i);
+    putc '\n'
+  done
 ;;

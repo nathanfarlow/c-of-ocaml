@@ -43,21 +43,18 @@ block *caml_alloc_block(unatint size, uchar tag) {
 }
 
 value caml_alloc_closure(value (*fun)(value *), unatint num_args,
-                         unatint num_env, ...) {
+                         unatint num_env) {
   block *b = caml_alloc_block(num_args + num_env + 3, Tag_closure);
   closure_t *c = (closure_t *)b->data;
   c->fun = fun;
-  c->args_idx = num_env;
+  c->args_idx = 0;
   c->total_args = num_args + num_env;
-
-  va_list args;
-  va_start(args, num_env);
-  for (unatint i = 0; i < num_env; i++) {
-    c->args[i] = va_arg(args, value);
-  }
-  va_end(args);
-
   return (value)b;
+}
+
+void add_arg(value closure, value arg) {
+  closure_t *c = (closure_t *)(((block *)closure)->data);
+  c->args[c->args_idx++] = arg;
 }
 
 value caml_call(value closure, unatint num_args, ...) {
