@@ -105,7 +105,7 @@ and compile_block ctx (pc : Addr.t) =
     let name = Printf.sprintf "block_%d" pc in
     let body = String.concat ~sep:"\n" (compiled_instrs @ [ compiled_last ]) in
     let args_as_str = String.concat ~sep:", " (List.map block.params ~f:Var.to_string) in
-    Printf.sprintf "%s: //%s \n%s" name args_as_str body, true)
+    Printf.sprintf "%s:; //%s \n%s" name args_as_str body, true)
 
 and compile_instr ctx (instr, _) =
   match instr with
@@ -289,6 +289,22 @@ and compile_extern name args =
       "Val_int(Int_val(%s) - Int_val(%s))"
       (compile_prim_arg a)
       (compile_prim_arg b)
+  | "%int_mul", [ a; b ] ->
+    Printf.sprintf
+      "Val_int(Int_val(%s) * Int_val(%s))"
+      (compile_prim_arg a)
+      (compile_prim_arg b)
+  | "%int_div", [ a; b ] ->
+    Printf.sprintf
+      "Val_int(Int_val(%s) / Int_val(%s))"
+      (compile_prim_arg a)
+      (compile_prim_arg b)
+  | "%int_mod", [ a; b ] ->
+    Printf.sprintf
+      "Val_int(Int_val(%s) %% Int_val(%s))"
+      (compile_prim_arg a)
+      (compile_prim_arg b)
+  (* TODO: these are direct, no need to use wrapper *)
   | "%direct_int_mul", [ a; b ] ->
     Printf.sprintf
       "Val_int(Int_val(%s) * Int_val(%s))"

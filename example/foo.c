@@ -151,163 +151,115 @@ value caml_string_unsafe_get(value s, value i) {
   return Val_int(c);
 }
 value closure_0(value *env);
-value closure_238(value *env);
-value closure_258(value *env);
+value closure_387(value *env);
 // free: 0, params: 0
 value closure_0(value *env) {
-  value b;
-  value a;
 
-block_0: //
-  value c = Val_unit /* aka undefined */;
+block_0:; //
+  value a = Val_unit /* aka undefined */;
 
-block_111: //
+block_111:; //
 
-block_217: //
+block_217:; //
 
-block_334: //
-  value d = caml_alloc_closure(closure_238, 1, 1);
-  add_arg(d, d);
+block_320:; //
 
-block_401: //
+block_463:; //
 
-block_320: //
+block_536:; //
 
-block_392: //
+block_315:; //
 
-block_178: //
-  value e = Val_int(0);
-  a = e;
+block_535:; //
 
-block_190: // a
-  value f = caml_string_unsafe_get(caml_copy_string("Fibonacci numbers:"), a);
+block_534:; //
 
-block_403: //
+block_532:; //
 
-block_315: //
-  value g = caml_putc(f);
+block_533:; //
 
-block_402: //
-  value h = Val_int(Int_val(a) + Int_val(Val_int(1)));
-  value i = Val_bool(Val_int(17) != a);
-  if (Bool_val(i)) {
-    a = h;
+block_531:; //
 
-    goto block_190;
-  } else {
-    goto block_206;
-  }
+block_268:; //
 
-block_206: //
+block_520:; //
 
-block_391: //
-  value j = caml_putc(Val_int(10));
+block_301:; //
 
-block_400: //
-  value k = Val_int(0);
-  b = k;
+block_519:; //
 
-block_358: // b
-  value l = caml_call(d, 1, b) /* exact */;
+block_530:; //
 
-block_399: //
+block_529:; //
 
-block_291: //
-  value m = caml_alloc_closure(closure_258, 1, 2);
-  add_arg(m, c);
-  add_arg(m, m);
-  value n = Val_bool(Int_val(Val_int(0)) <= Int_val(l));
-  if (Bool_val(n)) {
-    goto block_311;
-  } else {
-    goto block_302;
-  }
-block_311: //
-  value o = caml_call(m, 1, l) /* exact */;
+block_527:; //
 
-block_398: //
-  value p = caml_putc(Val_int(10));
-  value q = Val_int(Int_val(b) + Int_val(Val_int(1)));
-  value r = Val_bool(Val_int(40) != b);
-  if (Bool_val(r)) {
-    b = q;
+block_528:; //
 
-    goto block_358;
-  } else {
-    goto block_378;
-  }
+block_526:; //
 
-block_378: //
+block_283:; //
+
+block_525:; //
+
+block_524:; //
+
+block_306:; //
+  value b = Val_int(3320);
+
+block_523:; //
+
+block_522:; //
+
+block_420:; //
+  value c = caml_alloc_closure(closure_387, 1, 2);
+  add_arg(c, a);
+  add_arg(c, c);
+
+block_440:; //
+  value d = caml_call(c, 1, b) /* exact */;
+
+block_521:; //
   return Val_unit;
-block_302: //
-  value s = caml_putc(Val_int(45));
-  value t = Val_int(-Int_val(l));
-  value u = caml_call(m, 1, t) /* exact */;
-
-  goto block_398;
-}
-
-// free: 1, params: 1
-value closure_238(value *env) {
-
-  value d = env[0];
-  value v = env[1];
-
-block_238: //
-  value w = Val_bool(Int_val(Val_int(2)) <= Int_val(v));
-  if (Bool_val(w)) {
-    goto block_245;
-  } else {
-    goto block_242;
-  }
-block_245: //
-  value x = Val_int(Int_val(v) + Int_val(Val_int(-2)));
-  value y = caml_call(d, 1, x) /* exact */;
-  value z = Val_int(Int_val(v) + Int_val(Val_int(-1)));
-  value A = caml_call(d, 1, z) /* exact */;
-  value B = Val_int(Int_val(A) + Int_val(y));
-  return B;
-block_242: //
-  return v;
 }
 
 // free: 2, params: 1
-value closure_258(value *env) {
+value closure_387(value *env) {
 
-  value c = env[0];
-  value m = env[1];
-  value C = env[2];
+  value a = env[0];
+  value c = env[1];
+  value e = env[2];
 
-block_258: //
-  value D = Val_bool(Int_val(Val_int(10)) <= Int_val(C));
-  if (Bool_val(D)) {
-    goto block_272;
+block_387:; //
+  value f = Val_bool(Int_val(Val_int(10)) <= Int_val(e));
+  if (Bool_val(f)) {
+    goto block_401;
   } else {
-    goto block_262;
+    goto block_391;
   }
-block_272: //
-  value E = Val_int(Int_val(C) / Int_val(Val_int(10)));
-  value F = caml_call(m, 1, E) /* exact */;
-  value G = Val_int(Int_val(C) % Int_val(Val_int(10)));
+block_401:; //
+  value g = Val_int(Int_val(e) / Int_val(Val_int(10)));
+  value h = caml_call(c, 1, g) /* exact */;
+  value i = Val_int(Int_val(e) % Int_val(Val_int(10)));
 
-block_395: //
+block_516:; //
 
-block_393: //
-  value H = caml_string_unsafe_get(caml_copy_string("0123456789"), G);
+block_514:; //
+  value j = caml_string_unsafe_get(caml_copy_string("0123456789"), i);
 
-block_394: //
-  value I = caml_putc(H);
-  return c;
-block_262: //
+block_515:; //
+  value k = caml_putc(j);
+  return a;
+block_391:; //
 
-block_397: //
+block_518:; //
 
-block_212: //
-  value J = caml_string_unsafe_get(caml_copy_string("0123456789"), C);
+block_212:; //
+  value l = caml_string_unsafe_get(caml_copy_string("0123456789"), e);
 
-block_396: //
-  value K = caml_putc(J);
-  return c;
+block_517:; //
+  value m = caml_putc(l);
+  return a;
 }
 
 int main() {
