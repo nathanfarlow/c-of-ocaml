@@ -30,8 +30,9 @@ typedef struct {
 
 typedef struct {
   value (*fun)(value *);
-  unatint env_size;
-  value env[];
+  unatint args_idx;
+  unatint total_args;
+  value args[];
 } closure_t;
 
 block *caml_alloc_block(unatint size, uchar tag) {
@@ -41,20 +42,83 @@ block *caml_alloc_block(unatint size, uchar tag) {
   return b;
 }
 
-value caml_alloc_closure(value (*fun)(value *), unatint env_size) {
-  block *b = caml_alloc_block(env_size + 1, Tag_closure);
+value caml_alloc_closure(value (*fun)(value *), unatint num_args,
+                         unatint num_env, ...) {
+  block *b = caml_alloc_block(num_args + num_env + 3, Tag_closure);
   closure_t *c = (closure_t *)b->data;
   c->fun = fun;
-  c->env_size = env_size;
+  c->args_idx = num_env;
+  c->total_args = num_args + num_env;
+
+  va_list args;
+  va_start(args, num_env);
+  for (unatint i = 0; i < num_env; i++) {
+    c->args[i] = va_arg(args, value);
+  }
+  va_end(args);
+
   return (value)b;
+}
+
+value caml_call(value closure, unatint num_args, ...) {
+  closure_t *c = (closure_t *)(((block *)closure)->data);
+
+  // Copy existing args
+  value *new_args = malloc((c->total_args) * sizeof(value));
+  memcpy(new_args, c->args, c->args_idx * sizeof(value));
+
+  va_list args;
+  va_start(args, num_args);
+
+  for (unatint i = 0; i < num_args && c->args_idx + i < c->total_args; i++) {
+    new_args[c->args_idx + i] = va_arg(args, value);
+  }
+
+  va_end(args);
+
+  unatint total_provided = c->args_idx + num_args;
+
+  if (total_provided == c->total_args) {
+    // Exact number of args provided
+    value result = c->fun(new_args);
+    free(new_args);
+    return result;
+  } else if (total_provided < c->total_args) {
+    // Too few args, return new partial closure
+    value new_closure = caml_alloc_closure(
+        c->fun, c->total_args - total_provided, total_provided);
+    closure_t *new_c = (closure_t *)(((block *)new_closure)->data);
+    memcpy(new_c->args, new_args, total_provided * sizeof(value));
+    free(new_args);
+    return new_closure;
+  } else {
+    // Too many args, call function and recurse
+    value result = c->fun(new_args);
+    free(new_args);
+
+    // Prepare args for recursive call
+    unatint excess_args = num_args - (c->total_args - c->args_idx);
+    va_list excess_va_list;
+    va_start(excess_va_list, num_args);
+
+    // Skip the args we've already used
+    for (unatint i = 0; i < c->total_args - c->args_idx; i++) {
+      va_arg(excess_va_list, value);
+    }
+
+    // Recursive call with remaining args
+    value final_result = caml_call(result, excess_args, excess_va_list);
+    va_end(excess_va_list);
+    return final_result;
+  }
 }
 
 value caml_copy_string(const char *s) {
   unatint len = strlen(s);
   unatint num_values_for_string = ((len + 1) / sizeof(value)) + 1;
   block *b = caml_alloc_block(num_values_for_string + 1, Tag_string);
-  b->data[0] = len;
   memcpy(b->data + 1, s, len + 1);
+  b->data[0] = Val_int(len);
   return (value)b;
 }
 
@@ -77,6 +141,8 @@ value caml_putc(value c) {
   putchar(Int_val(c));
   return Val_unit;
 }
+
+value caml_ml_string_length(value s) { return Field(s, 0); }
 
 value caml_getc(value _) { return Val_int(getchar()); }
 
