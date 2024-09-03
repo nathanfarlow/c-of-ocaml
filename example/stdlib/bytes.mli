@@ -13,18 +13,23 @@
 (*                                                                        *)
 (**************************************************************************)
 
-external length : string -> int = "%string_length"
-external unsafe_get : string -> int -> char = "%string_unsafe_get"
+(** Return the length (number of bytes) of the argument. *)
+external length : bytes -> int = "%bytes_length"
 
-let get s i =
-  if i < 0 || i >= length s then raise (Invalid_argument "String.get") else unsafe_get s i
-;;
+external unsafe_get : bytes -> int -> char = "%bytes_unsafe_get"
+external unsafe_set : bytes -> int -> char -> unit = "%bytes_unsafe_set"
 
-let iter s ~f =
-  let len = length s in
-  for i = 0 to len - 1 do
-    f (unsafe_get s i)
-  done
-;;
+(** [create n] returns a new byte sequence of length [n]. The
+    sequence is uninitialized and contains arbitrary bytes.
+    @raise Invalid_argument if [n < 0] or [n > ]{!Sys.max_string_length}. *)
+external create : int -> bytes = "caml_create_bytes"
 
-type t = string
+(** Return a new byte sequence that contains the same bytes as the
+    given string. *)
+val of_string : string -> bytes
+
+(** Return a new string that contains the same bytes as the given byte
+    sequence. *)
+val to_string : bytes -> string
+
+type t = bytes

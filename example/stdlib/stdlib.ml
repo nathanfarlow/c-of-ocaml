@@ -85,6 +85,61 @@ external ( asr ) : int -> int -> int = "%asrint"
 let max_int = -1 lsr 1
 let min_int = max_int + 1
 
+external string_length : string -> int = "%string_length"
+external bytes_length : bytes -> int = "%bytes_length"
+external bytes_create : int -> bytes = "caml_create_bytes"
+
+external string_blit : string -> int -> bytes -> int -> int -> unit = "caml_blit_string"
+[@@noalloc]
+
+external bytes_blit : bytes -> int -> bytes -> int -> int -> unit = "caml_blit_bytes"
+[@@noalloc]
+
+external bytes_unsafe_to_string : bytes -> string = "%bytes_to_string"
+
+let ( ^ ) s1 s2 =
+  let l1 = string_length s1
+  and l2 = string_length s2 in
+  let s = bytes_create (l1 + l2) in
+  string_blit s1 0 s 0 l1;
+  string_blit s2 0 s l1 l2;
+  bytes_unsafe_to_string s
+;;
+
+(* Character operations -- more in module Char *)
+
+external int_of_char : char -> int = "%identity"
+external unsafe_char_of_int : int -> char = "%identity"
+
+let char_of_int n =
+  if n < 0 || n > 255 then invalid_arg "char_of_int" else unsafe_char_of_int n
+;;
+
+(* Unit operations *)
+
+external ignore : 'a -> unit = "%ignore"
+
+(* Pair operations *)
+
+external fst : 'a * 'b -> 'a = "%field0"
+external snd : 'a * 'b -> 'b = "%field1"
+
+(* References *)
+
+type 'a ref = { mutable contents : 'a }
+
+external ref : 'a -> 'a ref = "%makemutable"
+external ( ! ) : 'a ref -> 'a = "%field0"
+external ( := ) : 'a ref -> 'a -> unit = "%setfield0"
+external incr : int ref -> unit = "%incr"
+external decr : int ref -> unit = "%decr"
+
+(* Result type *)
+
+type ('a, 'b) result =
+  | Ok of 'a
+  | Error of 'b
+
 external putc : char -> unit = "caml_putc"
 external getc : unit -> char = "caml_getc"
 

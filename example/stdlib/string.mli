@@ -1,8 +1,20 @@
-(** [length s] is the length (number of bytes/characters) of [s]. *)
+(**************************************************************************)
+(*                                                                        *)
+(*                                 OCaml                                  *)
+(*                                                                        *)
+(*             Xavier Leroy, projet Cristal, INRIA Rocquencourt           *)
+(*                                                                        *)
+(*   Copyright 1996 Institut National de Recherche en Informatique et     *)
+(*     en Automatique.                                                    *)
+(*                                                                        *)
+(*   All rights reserved.  This file is distributed under the terms of    *)
+(*   the GNU Lesser General Public License version 2.1, with the          *)
+(*   special exception on linking described in the file LICENSE.          *)
+(*                                                                        *)
+(**************************************************************************)
+
 external length : string -> int = "%string_length"
-
-(** [get s i] is the character at index [i] in [s]. This is the same
-    as writing [s.[i]]. *)
 val get : string -> int -> char
-
 val iter : string -> f:(char -> unit) -> unit
+
+type t = string
