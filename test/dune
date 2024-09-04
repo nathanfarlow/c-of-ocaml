@@ -3,4 +3,8 @@
  (libraries coo async core core_unix expect_test_helpers_async)
  (preprocess
   (pps ppx_jane))
- (inline_tests))
+ (inline_tests
+  (deps
+   (file ../lib/runtime/runtime.c)
+   (glob_files_rec ../example/stdlib/**)
+   (glob_files_rec ../example/stdlib/.stdlib.objs/byte/*.cmi))))
