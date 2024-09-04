@@ -365,11 +365,9 @@ type ('a, 'b) result =
       for the [scanf]-style functions, it is typically the result type of the
       receiver function. *)
 
-external putc : char -> unit = "caml_putc"
-external getc : unit -> char = "caml_getc"
-
 module Int = Stdlib__Int
 module String = Stdlib__String
 module List = Stdlib__List
 module Char = Stdlib__Char
 module Bytes = Stdlib__Bytes
+module Io = Stdlib__Io
