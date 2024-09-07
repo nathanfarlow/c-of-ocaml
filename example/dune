@@ -1,34 +1,18 @@
 (executable
- (name foo)
+ (name main)
  (libraries stdlib)
  (modes byte))
 
-(rule
- (targets foo.unformatted.c)
- (action
-  (with-stdout-to
-   %{targets}
-   (run %{bin:c_of_ocaml} %{dep:foo.bc}))))
+(include ../common.dune)
+
+; Also compile it:
 
 (rule
- (target foo.combined.c)
- (deps
-  (:runtime %{project_root}/runtime/runtime.c)
-  foo.unformatted.c)
+ (target main.c.exe)
+ (deps main.c)
  (action
-  (with-stdout-to
-   %{target}
-   (bash "cat %{runtime} %{dep:foo.unformatted.c}"))))
-
-(rule
- (target foo.c)
- (mode promote)
- (deps foo.combined.c)
- (action
-  (with-stdout-to
-   %{target}
-   (run clang-format %{deps}))))
+  (run %{cc} -Og -g -o main.c.exe %{deps})))
 
 (alias
  (name default)
- (deps foo.c))
+ (deps main.c.exe))
