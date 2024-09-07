@@ -24,7 +24,8 @@ let () =
 ;;
   |}
   in
-  [%expect {|
+  [%expect
+    {|
     1
     1
     2
@@ -46,5 +47,23 @@ let () =
     4181
     6765
     10946 |}];
+  return ()
+;;
+
+let%expect_test "something" =
+  let%bind () =
+    compile_and_run
+      {|
+let () =
+  let l = [ Some "hello"; Some "world"; None ] in
+  List.iter l ~f:(function
+      | None -> Io.puts "None"
+      | Some s -> Io.puts s)
+|}
+  in
+  [%expect {|
+  hello
+  world
+  None |}];
   return ()
 ;;
