@@ -291,7 +291,7 @@ and compile_prim_arg = function
 let f prog =
   let ctx = { prog; closures = find_closures prog } in
   let closures = Hashtbl.to_alist ctx.closures in
-  List.map closures ~f:(fun (pc, _) -> sprintf "value closure_%d(value* env);" pc)
+  List.map closures ~f:(fun (pc, _) -> sprintf "value %s(value* env);" (closure_name pc))
   @ List.map closures ~f:(fun (pc, c) -> compile_closure ctx pc c)
   @ [ sprintf "int main() { %s(NULL); return 0; }" (closure_name prog.start) ]
   |> String.concat ~sep:"\n"
