@@ -1,6 +1,6 @@
 (lang dune 3.14)
 
-(name coo)
+(name c_of_ocaml)
 
 (using experimental_building_ocaml_compiler_with_dune 0.1)
 
@@ -18,7 +18,7 @@
 (documentation https://url/to/documentation)
 
 (package
- (name coo)
+ (name c_of_ocaml)
  (synopsis "A short synopsis")
  (description "A longer description")
  (depends

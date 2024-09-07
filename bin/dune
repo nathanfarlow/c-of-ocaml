@@ -1,6 +1,6 @@
 (executable
  (public_name c_of_ocaml)
  (name main)
- (libraries coo async core core_unix.command_unix)
+ (libraries c_of_ocaml async core core_unix.command_unix)
  (preprocess
   (pps ppx_jane)))

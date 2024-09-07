@@ -79,9 +79,9 @@ let rec compile_closure ctx pc info =
   sprintf "%s {\n%s\n%s\n%s\n%s\n}\n\n" signature var_decls env_assignments renaming body
 
 and compile_block ctx visited pc =
-  if Hash_set.mem visited pc
-  then ""
-  else (
+  match Hash_set.mem visited pc with
+  | true -> ""
+  | false ->
     Hash_set.add visited pc;
     let block = Addr.Map.find pc ctx.prog.blocks in
     let body =
@@ -89,7 +89,7 @@ and compile_block ctx visited pc =
       @ [ compile_last ctx visited block.branch ]
       |> String.concat ~sep:"\n"
     in
-    sprintf "%s:\n%s" (block_name pc) body)
+    sprintf "%s:\n%s" (block_name pc) body
 
 and compile_instr ctx (instr, _) =
   match instr with
@@ -178,22 +178,9 @@ and compile_last ctx visited (last, _) =
       |> String.concat ~sep:"\n"
     in
     sprintf "switch (Int_val(%s)) {\n%s\n  }" (Var.to_string var) cases
-  | Pushtrap ((pc, args), _, (pc2, args2)) ->
-    (* TODO: this is nonsense *)
-    let branch = compile_branch ctx pc args in
-    let block = compile_block ctx visited pc in
-    let handler = compile_branch ctx pc2 args2 in
-    let handler_block = compile_block ctx visited pc2 in
-    sprintf
-      "%s\n%s\ncaml_pushtrap();\nif (caml_exception_pointer != NULL) { %s } else { %s }"
-      branch
-      block
-      handler
-      handler_block
-  | Poptrap (pc, args) ->
-    let branch = compile_branch ctx pc args in
-    let block = compile_block ctx visited pc in
-    sprintf "%s\n%s\ncaml_poptrap();" branch block
+  (* TODO: implement exceptions *)
+  | Pushtrap _ -> assert false
+  | Poptrap _ -> assert false
 
 and compile_constant c =
   match c with

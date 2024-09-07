@@ -180,3 +180,6 @@ value caml_blit_bytes(value src, value src_pos, value dst, value dst_pos,
   memcpy(Str_val(dst) + dst_pos_val, Str_val(src) + src_pos_val, len_val);
   return Val_unit;
 }
+
+/* TODO: Implement this */
+value caml_register_global(value a, value b, value c) { return Val_unit; }

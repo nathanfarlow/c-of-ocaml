@@ -59,55 +59,34 @@ void add_arg(value closure, value arg) {
 
 value caml_call(value closure, unatint num_args, ...) {
   closure_t *c = (closure_t *)(((block *)closure)->data);
+  unatint total_provided = c->args_idx + num_args;
+  value *new_args = malloc(total_provided * sizeof(value));
 
-  // Copy existing args
-  value *new_args = malloc((c->total_args) * sizeof(value));
   memcpy(new_args, c->args, c->args_idx * sizeof(value));
 
   va_list args;
   va_start(args, num_args);
-
-  for (unatint i = 0; i < num_args && c->args_idx + i < c->total_args; i++) {
+  for (unatint i = 0; i < num_args; i++) {
     new_args[c->args_idx + i] = va_arg(args, value);
   }
-
   va_end(args);
 
-  unatint total_provided = c->args_idx + num_args;
-
-  if (total_provided == c->total_args) {
-    // Exact number of args provided
-    value result = c->fun(new_args);
-    free(new_args);
-    return result;
-  } else if (total_provided < c->total_args) {
-    // Too few args, return new partial closure
-    value new_closure = caml_alloc_closure(
-        c->fun, c->total_args - total_provided, total_provided);
-    closure_t *new_c = (closure_t *)(((block *)new_closure)->data);
-    memcpy(new_c->args, new_args, total_provided * sizeof(value));
-    free(new_args);
-    return new_closure;
-  } else {
-    // Too many args, call function and recurse
-    value result = c->fun(new_args);
-    free(new_args);
-
-    // Prepare args for recursive call
-    unatint excess_args = num_args - (c->total_args - c->args_idx);
-    va_list excess_va_list;
-    va_start(excess_va_list, num_args);
-
-    // Skip the args we've already used
-    for (unatint i = 0; i < c->total_args - c->args_idx; i++) {
-      va_arg(excess_va_list, value);
+  value result;
+  if (total_provided >= c->total_args) {
+    result = c->fun(new_args);
+    if (total_provided > c->total_args) {
+      unatint excess_args = total_provided - c->total_args;
+      result = caml_call(result, excess_args, new_args + c->total_args);
     }
-
-    // Recursive call with remaining args
-    value final_result = caml_call(result, excess_args, excess_va_list);
-    va_end(excess_va_list);
-    return final_result;
+  } else {
+    result = caml_alloc_closure(c->fun, c->total_args - total_provided,
+                                total_provided);
+    closure_t *new_c = (closure_t *)(((block *)result)->data);
+    memcpy(new_c->args, new_args, total_provided * sizeof(value));
   }
+
+  free(new_args);
+  return result;
 }
 
 value caml_copy_string(const char *s) {
@@ -201,473 +180,566 @@ value caml_blit_bytes(value src, value src_pos, value dst, value dst_pos,
   memcpy(Str_val(dst) + dst_pos_val, Str_val(src) + src_pos_val, len_val);
   return Val_unit;
 }
-value closure_2265(value *env);
 
-value closure_158(value *env);
-
-value closure_2342(value *env);
-
-value closure_0(value *env);
-
-// free: 1, params: 1
-value closure_2265(value *env) {
+/* TODO: Implement this */
+value caml_register_global(value a, value b, value c) { return Val_unit; }
+value c2265(value *env);
+value c158(value *env);
+value c2342(value *env);
+value c0(value *env);
+value c2265(value *env) {
 
   value a = env[0];
   value b = env[1];
 
-block_2265:; //
-  value c = Val_bool(Int_val(Val_int(2)) <= Int_val(b));
-  if (Bool_val(c)) {
-    goto block_2272;
+b2265:
+  value i = Val_bool(Int_val(Val_int(2)) <= Int_val(b));
+  if (Bool_val(i)) {
+    goto b2272;
   } else {
-    goto block_2269;
+    goto b2269;
   }
-block_2272:; //
+b2272:
   value d = Val_int(Int_val(b) + Int_val(Val_int(-2)));
-  value e = caml_call(a, 1, d) /* exact */;
+  value e = caml_call(a, 1, d);
   value f = Val_int(Int_val(b) + Int_val(Val_int(-1)));
-  value g = caml_call(a, 1, f) /* exact */;
-  value h = Val_int(Int_val(g) + Int_val(e));
+  value g = caml_call(a, 1, f);
+  value c = Val_int(Int_val(g) + Int_val(e));
+  return c;
+b2269:
+  value h = Val_int(1);
   return h;
-block_2269:; //
-  value i = Val_int(1);
-  return i;
 }
 
-// free: 0, params: 2
-value closure_158(value *env) {
+value c158(value *env) {
 
   value j = env[0];
   value k = env[1];
 
-block_158:; //
-  value l = caml_ml_string_length(j);
-  value m = caml_ml_string_length(k);
-  value n = Val_int(Int_val(l) + Int_val(m));
-  value o = caml_string_concat(j, k);
-  value p = caml_bytes_of_string(o);
-  return o;
+b158:
+  value m = caml_ml_string_length(j);
+  value n = caml_ml_string_length(k);
+  value o = Val_int(Int_val(m) + Int_val(n));
+  value l = caml_string_concat(j, k);
+  value p = caml_bytes_of_string(l);
+  return l;
 }
 
-// free: 0, params: 1
-value closure_2342(value *env) {
+value c2342(value *env) {
   value q;
   value r = env[0];
 
-block_2342:; //
+b2342:
 
-block_2348:; //
+  goto b2348;
+b2348:
 
-block_1835:; //
-  value s = caml_create_bytes(Val_int(1));
-  value t = Val_int(0);
-  q = t;
+  goto b1835;
+b1835:
+  value u = caml_create_bytes(Val_int(1));
+  value x = Val_int(0);
+  q = x;
 
-block_1847:; // q
-  value u = caml_bytes_unsafe_set(s, q, r);
-  value v = Val_int(Int_val(q) + Int_val(Val_int(1)));
-  value w = Val_bool(Val_int(0) != q);
-  if (Bool_val(w)) {
-    q = v;
+  goto b1847;
+b1847:
+  value w = caml_bytes_unsafe_set(u, q, r);
+  value s = Val_int(Int_val(q) + Int_val(Val_int(1)));
+  value v = Val_bool(Val_int(0) != q);
+  if (Bool_val(v)) {
+    q = s;
 
-    goto block_1847;
+    goto b1847;
   } else {
-    goto block_1862;
+    goto b1862;
   }
 
-block_1862:; //
-  value x = caml_string_of_bytes(s);
-  return x;
+b1862:
+  value t = caml_string_of_bytes(u);
+  return t;
 }
 
-// free: 0, params: 0
-value closure_0(value *env) {
-  value K;
-  value G;
+value c0(value *env) {
+  value A;
   value B;
+  value C;
   value D;
-  value L;
-  value J;
+  value E;
+  value F;
+  value G;
   value H;
   value I;
-  value A;
-  value F;
+  value J;
+  value K;
+  value L;
   value y;
   value z;
-  value E;
-  value C;
 
-block_0:; //
-  value M =
+b0:
+  value a4 = caml_alloc(2, 248, caml_copy_string("Out_of_memory"), Val_int(-1));
+  value a5 = caml_alloc(2, 248, caml_copy_string("Sys_error"), Val_int(-2));
+  value a6 = caml_alloc(2, 248, caml_copy_string("Failure"), Val_int(-3));
+  value aM =
       caml_alloc(2, 248, caml_copy_string("Invalid_argument"), Val_int(-4));
-  value N = caml_copy_string("Char.of_int");
-  value O = caml_copy_string("");
-  value P = caml_copy_string("0");
-  value Q = caml_copy_string("-");
-  value R = caml_copy_string("");
-  value S = caml_alloc(1, 0, caml_copy_string(""));
+  value a7 = caml_alloc(2, 248, caml_copy_string("End_of_file"), Val_int(-5));
+  value a8 =
+      caml_alloc(2, 248, caml_copy_string("Division_by_zero"), Val_int(-6));
+  value a9 = caml_alloc(2, 248, caml_copy_string("Not_found"), Val_int(-7));
+  value a_ = caml_alloc(2, 248, caml_copy_string("Match_failure"), Val_int(-8));
+  value a$ =
+      caml_alloc(2, 248, caml_copy_string("Stack_overflow"), Val_int(-9));
+  value ba =
+      caml_alloc(2, 248, caml_copy_string("Sys_blocked_io"), Val_int(-10));
+  value bb =
+      caml_alloc(2, 248, caml_copy_string("Assert_failure"), Val_int(-11));
+  value bc = caml_alloc(2, 248, caml_copy_string("Undefined_recursive_module"),
+                        Val_int(-12));
+  value aN = caml_copy_string("Char.of_int");
+  value ar = caml_copy_string("");
+  value X = caml_copy_string("0");
+  value a0 = caml_copy_string("-");
+  value aZ = caml_copy_string("");
+  value as = caml_alloc(1, 0, caml_copy_string(""));
+  value bd = caml_register_global(
+      Val_int(11), bc, caml_copy_string("Undefined_recursive_module"));
+  value be =
+      caml_register_global(Val_int(10), bb, caml_copy_string("Assert_failure"));
+  value bf =
+      caml_register_global(Val_int(9), ba, caml_copy_string("Sys_blocked_io"));
+  value bg =
+      caml_register_global(Val_int(8), a$, caml_copy_string("Stack_overflow"));
+  value bh =
+      caml_register_global(Val_int(7), a_, caml_copy_string("Match_failure"));
+  value bi =
+      caml_register_global(Val_int(6), a9, caml_copy_string("Not_found"));
+  value bj = caml_register_global(Val_int(5), a8,
+                                  caml_copy_string("Division_by_zero"));
+  value bk =
+      caml_register_global(Val_int(4), a7, caml_copy_string("End_of_file"));
+  value bl = caml_register_global(Val_int(3), aM,
+                                  caml_copy_string("Invalid_argument"));
+  value bm = caml_register_global(Val_int(2), a6, caml_copy_string("Failure"));
+  value bn =
+      caml_register_global(Val_int(1), a5, caml_copy_string("Sys_error"));
+  value bo =
+      caml_register_global(Val_int(0), a4, caml_copy_string("Out_of_memory"));
 
-block_218:; //
-  value T = caml_alloc_closure(closure_158, 2, 0);
+  goto b218;
+b218:
+  value al = caml_alloc_closure(c158, 2, 0);
 
-block_300:; //
+  goto b300;
+b300:
 
-block_519:; //
+  goto b519;
+b519:
 
-block_1671:; //
+  goto b1671;
+b1671:
 
-block_1991:; //
+  goto b1991;
+b1991:
 
-block_2166:; //
+  goto b2166;
+b2166:
 
-block_2252:; //
+  goto b2252;
+b2252:
 
-block_2295:; //
-  value a = caml_alloc_closure(closure_2265, 1, 1);
+  goto b2295;
+b2295:
+  value a = caml_alloc_closure(c2265, 1, 1);
   add_arg(a, a);
-  value U = Val_int(0);
-  y = U;
-
-block_2311:; // y
-  value V = caml_call(a, 1, y) /* exact */;
-
-block_2368:; //
-
-block_2285:; //
-
-block_2345:; //
-
-block_2063:; //
-  value W = Val_bool(Val_int(0) == V);
-  if (Bool_val(W)) {
-    goto block_2072;
-  } else {
-    goto block_2076;
-  }
-block_2072:; //
-  z = P;
-
-block_2344:; // z
-
-block_2343:; //
-
-block_2238:; //
-
-block_2347:; //
-
-block_1934:; //
-  value X = caml_ml_string_length(z);
-  value Y = Val_int(0);
-  value Z = Val_int(Int_val(X) + Int_val(Val_int(-1)));
-  value _ = Val_bool(Int_val(Z) < Int_val(Val_int(0)));
-  if (Bool_val(_)) {
-    goto block_1962;
-  } else {
-    A = Y;
-
-    goto block_1946;
-  }
-block_1962:; //
-
-block_2346:; //
-  value $ = caml_putc(Val_int(10));
-
-block_2367:; //
-  value aa = Val_int(Int_val(y) + Int_val(Val_int(1)));
-  value ab = Val_bool(Val_int(20) != y);
-  if (Bool_val(ab)) {
-    y = aa;
-
-    goto block_2311;
-  } else {
-    goto block_2327;
-  }
-
-block_2327:; //
-  return Val_unit;
-block_1946:; // A
-  value ac = caml_string_unsafe_get(z, A);
-
-block_2370:; //
-
-block_2233:; //
-  value ad = caml_putc(ac);
-
-block_2369:; //
-  value ae = Val_int(Int_val(A) + Int_val(Val_int(1)));
-  value af = Val_bool(Z != A);
-  if (Bool_val(af)) {
-    A = ae;
-
-    goto block_1946;
-  } else {
-    goto block_1962;
-  }
-
-block_2076:; //
-  value ag = Val_bool(Int_val(Val_int(0)) <= Int_val(V));
-  if (Bool_val(ag)) {
-    goto block_2084;
-  } else {
-    goto block_2080;
-  }
-block_2084:; //
-  B = R;
-
-block_2086:; // B
-  value ah = Val_int(0);
-
-block_2360:; //
-  C = ah;
-  D = V;
-
-block_2032:; // C, D
-  value ai = Val_bool(Val_int(0) == D);
-  if (Bool_val(ai)) {
-    goto block_2036;
-  } else {
-    goto block_2039;
-  }
-block_2036:; //
-
-block_2359:; //
-  value aj = caml_alloc_closure(closure_2342, 1, 0);
-
-block_2358:; //
-
-block_2341:; //
-
-block_2349:; //
-
-block_743:; //
-  if (Bool_val(C)) {
-    goto block_746;
-  } else {
-    goto block_797;
-  }
-block_746:; //
-  value ak = Field(C, 1);
-  value al = Field(C, 0);
-  if (Bool_val(ak)) {
-    goto block_753;
-  } else {
-    goto block_788;
-  }
-block_753:; //
-  value am = Field(ak, 1);
-  value an = Field(ak, 0);
-  value ao = caml_call(aj, 1, al) /* exact */;
-  value ap = caml_call(aj, 1, an) /* exact */;
-  value aq = Val_int(24029);
-  value ar = caml_alloc(2, 0, ap, aq);
-  value as = Val_int(1);
-
-block_2364:; //
-  E = am;
-  F = as;
-  G = ar;
-
-block_803:; // E, F, G
-  if (Bool_val(E)) {
-    goto block_806;
-  } else {
-    goto block_861;
-  }
-block_806:; //
-  value at = Field(E, 1);
-  value au = Field(E, 0);
-  if (Bool_val(at)) {
-    goto block_813;
-  } else {
-    goto block_849;
-  }
-block_813:; //
-  value av = Field(at, 1);
-  value aw = Field(at, 0);
-  value ax = caml_call(aj, 1, au) /* exact */;
-  value ay = caml_call(aj, 1, aw) /* exact */;
-  value az = Val_int(24029);
-  value aA = caml_alloc(2, 0, ay, az);
-  value aB = caml_alloc(2, 0, ax, aA);
-  Field(G, Int_val(F)) = aB;
-  value aC = Val_int(1);
-  E = av;
-  F = aC;
-  G = aA;
-
-  goto block_803;
-
-block_849:; //
-  value aD = caml_call(aj, 1, au) /* exact */;
-  value aE = Val_int(0);
-  value aF = caml_alloc(2, 0, aD, aE);
-  Field(G, Int_val(F)) = aF;
-
-block_2363:; //
-  value aG = caml_alloc(2, 0, ao, ar);
-  H = aG;
-
-block_2357:; // H
-
-block_2356:; //
-
-block_2340:; //
-
-block_2350:; //
-
-block_1888:; //
-
-block_1891:; //
-  value aH = Field(S, 0);
-
-block_1900:; //
-  if (Bool_val(H)) {
-    goto block_1903;
-  } else {
-    goto block_1927;
-  }
-block_1903:; //
-  value aI = Field(H, 0);
-  value aJ = Field(H, 1);
-  if (Bool_val(aJ)) {
-    goto block_1910;
-  } else {
-    goto block_1924;
-  }
-block_1910:; //
-  value aK = Field(H, 1);
-
-block_2362:; //
-  I = aK;
-  J = aI;
-
-block_1065:; // I, J
-  if (Bool_val(I)) {
-    goto block_1068;
-  } else {
-    goto block_1081;
-  }
-block_1068:; //
-  value aL = Field(I, 1);
-  value aM = Field(I, 0);
-
-block_2372:; //
-
-block_1873:; //
-  value aN = caml_call(T, 2, aH, aM) /* exact */;
-  value aO = caml_call(T, 2, J, aN) /* exact */;
-
-block_2371:; //
-  I = aL;
-  J = aO;
-
-  goto block_1065;
-
-block_1081:; //
-
-block_2361:; //
-  K = J;
-
-block_2355:; // K
-  value aP = caml_call(T, 2, B, K) /* exact */;
-  z = aP;
-
-  goto block_2344;
-
-block_1924:; //
-  K = aI;
-
-  goto block_2355;
-
-block_1927:; //
-  K = O;
-
-  goto block_2355;
-
-block_861:; //
-  value aQ = Val_int(0);
-  Field(G, Int_val(F)) = aQ;
-
-  goto block_2363;
-
-block_788:; //
-  value aR = caml_call(aj, 1, al) /* exact */;
-  value aS = Val_int(0);
-  value aT = caml_alloc(2, 0, aR, aS);
-  H = aT;
-
-  goto block_2357;
-
-block_797:; //
-  value aU = Val_int(0);
-  H = aU;
-
-  goto block_2357;
-
-block_2039:; //
-  value aV = Val_int(Int_val(D) % Int_val(Val_int(10)));
-
-block_2354:; //
-
-block_2155:; //
-  value aW = Val_bool(Int_val(Val_int(0)) <= Int_val(aV));
-  if (Bool_val(aW)) {
-    goto block_2159;
-  } else {
-    goto block_2162;
-  }
-block_2159:; //
-  L = aV;
-
-block_2353:; // L
-  value aX = Val_int(Int_val(L) + Int_val(Val_int(48)));
-
-block_2352:; //
-
-block_322:; //
-  value aY = Val_bool(Int_val(Val_int(0)) <= Int_val(aX));
-  if (Bool_val(aY)) {
-    goto block_326;
-  } else {
-    goto block_330;
-  }
-block_326:; //
-  value aZ = Val_bool(Int_val(Val_int(255)) < Int_val(aX));
-  if (Bool_val(aZ)) {
-    goto block_330;
-  } else {
-    goto block_337;
-  }
-block_330:; //
-
-block_2366:; //
-
-block_206:; //
-  value a0 = caml_alloc(2, 0, M, N);
-  caml_raise(a0);
-block_337:; //
-
-block_2351:; //
-  value a1 = caml_alloc(2, 0, aX, C);
-  value a2 = Val_int(Int_val(D) / Int_val(Val_int(10)));
-  C = a1;
-  D = a2;
-
-  goto block_2032;
-
-block_2162:; //
-  value a3 = Val_int(-Int_val(aV));
+  value a3 = Val_int(0);
   L = a3;
 
-  goto block_2353;
+  goto b2311;
+b2311:
+  value aY = caml_call(a, 1, L);
 
-block_2080:; //
-  B = Q;
+  goto b2368;
+b2368:
 
-  goto block_2086;
+  goto b2285;
+b2285:
+
+  goto b2345;
+b2345:
+
+  goto b2063;
+b2063:
+  value a2 = Val_bool(Val_int(0) == aY);
+  if (Bool_val(a2)) {
+    goto b2072;
+  } else {
+    goto b2076;
+  }
+b2072:
+  z = X;
+
+  goto b2344;
+b2344:
+
+  goto b2343;
+b2343:
+
+  goto b2238;
+b2238:
+
+  goto b2347;
+b2347:
+
+  goto b1934;
+b1934:
+  value W = caml_ml_string_length(z);
+  value M = Val_int(0);
+  value S = Val_int(Int_val(W) + Int_val(Val_int(-1)));
+  value V = Val_bool(Int_val(S) < Int_val(Val_int(0)));
+  if (Bool_val(V)) {
+    goto b1962;
+  } else {
+    y = M;
+
+    goto b1946;
+  }
+b1962:
+
+  goto b2346;
+b2346:
+  value P = caml_putc(Val_int(10));
+
+  goto b2367;
+b2367:
+  value N = Val_int(Int_val(L) + Int_val(Val_int(1)));
+  value O = Val_bool(Val_int(20) != L);
+  if (Bool_val(O)) {
+    L = N;
+
+    goto b2311;
+  } else {
+    goto b2327;
+  }
+
+b2327:
+  return Val_unit;
+b1946:
+  value T = caml_string_unsafe_get(z, y);
+
+  goto b2370;
+b2370:
+
+  goto b2233;
+b2233:
+  value U = caml_putc(T);
+
+  goto b2369;
+b2369:
+  value Q = Val_int(Int_val(y) + Int_val(Val_int(1)));
+  value R = Val_bool(S != y);
+  if (Bool_val(R)) {
+    y = Q;
+
+    goto b1946;
+  } else {
+    goto b1962;
+  }
+
+b2076:
+  value a1 = Val_bool(Int_val(Val_int(0)) <= Int_val(aY));
+  if (Bool_val(a1)) {
+    goto b2084;
+  } else {
+    goto b2080;
+  }
+b2084:
+  K = aZ;
+
+  goto b2086;
+b2086:
+  value aX = Val_int(0);
+
+  goto b2360;
+b2360:
+  I = aX;
+  J = aY;
+
+  goto b2032;
+b2032:
+  value aW = Val_bool(Val_int(0) == J);
+  if (Bool_val(aW)) {
+    goto b2036;
+  } else {
+    goto b2039;
+  }
+b2036:
+
+  goto b2359;
+b2359:
+  value ac = caml_alloc_closure(c2342, 1, 0);
+
+  goto b2358;
+b2358:
+
+  goto b2341;
+b2341:
+
+  goto b2349;
+b2349:
+
+  goto b743;
+b743:
+  if (Bool_val(I)) {
+    goto b746;
+  } else {
+    goto b797;
+  }
+b746:
+  value aC = Field(I, 1);
+  value aE = Field(I, 0);
+  if (Bool_val(aC)) {
+    goto b753;
+  } else {
+    goto b788;
+  }
+b753:
+  value aA = Field(aC, 1);
+  value aD = Field(aC, 0);
+  value au = caml_call(ac, 1, aE);
+  value aF = caml_call(ac, 1, aD);
+  value aG = Val_int(24029);
+  value av = caml_alloc(2, 0, aF, aG);
+  value aB = Val_int(1);
+
+  goto b2364;
+b2364:
+  E = aA;
+  F = aB;
+  G = av;
+
+  goto b803;
+b803:
+  if (Bool_val(E)) {
+    goto b806;
+  } else {
+    goto b861;
+  }
+b806:
+  value $ = Field(E, 1);
+  value ab = Field(E, 0);
+  if (Bool_val($)) {
+    goto b813;
+  } else {
+    goto b849;
+  }
+b813:
+  value Y = Field($, 1);
+  value aa = Field($, 0);
+  value ad = caml_call(ac, 1, ab);
+  value ae = caml_call(ac, 1, aa);
+  value af = Val_int(24029);
+  value _ = caml_alloc(2, 0, ae, af);
+  value ag = caml_alloc(2, 0, ad, _);
+  Field(G, Int_val(F)) = ag;
+  value Z = Val_int(1);
+  E = Y;
+  F = Z;
+  G = _;
+
+  goto b803;
+
+b849:
+  value aw = caml_call(ac, 1, ab);
+  value ax = Val_int(0);
+  value ay = caml_alloc(2, 0, aw, ax);
+  Field(G, Int_val(F)) = ay;
+
+  goto b2363;
+b2363:
+  value at = caml_alloc(2, 0, au, av);
+  D = at;
+
+  goto b2357;
+b2357:
+
+  goto b2356;
+b2356:
+
+  goto b2340;
+b2340:
+
+  goto b2350;
+b2350:
+
+  goto b1888;
+b1888:
+
+  goto b1891;
+b1891:
+  value aj = Field(as, 0);
+
+  goto b1900;
+b1900:
+  if (Bool_val(D)) {
+    goto b1903;
+  } else {
+    goto b1927;
+  }
+b1903:
+  value ap = Field(D, 0);
+  value aq = Field(D, 1);
+  if (Bool_val(aq)) {
+    goto b1910;
+  } else {
+    goto b1924;
+  }
+b1910:
+  value ao = Field(D, 1);
+
+  goto b2362;
+b2362:
+  B = ao;
+  C = ap;
+
+  goto b1065;
+b1065:
+  if (Bool_val(B)) {
+    goto b1068;
+  } else {
+    goto b1081;
+  }
+b1068:
+  value ah = Field(B, 1);
+  value ak = Field(B, 0);
+
+  goto b2372;
+b2372:
+
+  goto b1873;
+b1873:
+  value am = caml_call(al, 2, aj, ak);
+  value ai = caml_call(al, 2, C, am);
+
+  goto b2371;
+b2371:
+  B = ah;
+  C = ai;
+
+  goto b1065;
+
+b1081:
+
+  goto b2361;
+b2361:
+  A = C;
+
+  goto b2355;
+b2355:
+  value an = caml_call(al, 2, K, A);
+  z = an;
+
+  goto b2344;
+
+b1924:
+  A = ap;
+
+  goto b2355;
+
+b1927:
+  A = ar;
+
+  goto b2355;
+
+b861:
+  value az = Val_int(0);
+  Field(G, Int_val(F)) = az;
+
+  goto b2363;
+
+b788:
+  value aI = caml_call(ac, 1, aE);
+  value aJ = Val_int(0);
+  value aH = caml_alloc(2, 0, aI, aJ);
+  D = aH;
+
+  goto b2357;
+
+b797:
+  value aK = Val_int(0);
+  D = aK;
+
+  goto b2357;
+
+b2039:
+  value aT = Val_int(Int_val(J) % Int_val(Val_int(10)));
+
+  goto b2354;
+b2354:
+
+  goto b2155;
+b2155:
+  value aV = Val_bool(Int_val(Val_int(0)) <= Int_val(aT));
+  if (Bool_val(aV)) {
+    goto b2159;
+  } else {
+    goto b2162;
+  }
+b2159:
+  H = aT;
+
+  goto b2353;
+b2353:
+  value aQ = Val_int(Int_val(H) + Int_val(Val_int(48)));
+
+  goto b2352;
+b2352:
+
+  goto b322;
+b322:
+  value aS = Val_bool(Int_val(Val_int(0)) <= Int_val(aQ));
+  if (Bool_val(aS)) {
+    goto b326;
+  } else {
+    goto b330;
+  }
+b326:
+  value aR = Val_bool(Int_val(Val_int(255)) < Int_val(aQ));
+  if (Bool_val(aR)) {
+    goto b330;
+  } else {
+    goto b337;
+  }
+b330:
+
+  goto b2366;
+b2366:
+
+  goto b206;
+b206:
+  value aL = caml_alloc(2, 0, aM, aN);
+  caml_raise(aL);
+b337:
+
+  goto b2351;
+b2351:
+  value aO = caml_alloc(2, 0, aQ, I);
+  value aP = Val_int(Int_val(J) / Int_val(Val_int(10)));
+  I = aO;
+  J = aP;
+
+  goto b2032;
+
+b2162:
+  value aU = Val_int(-Int_val(aT));
+  H = aU;
+
+  goto b2353;
+
+b2080:
+  K = a0;
+
+  goto b2086;
 }
 
 int main() {
-  closure_0(NULL);
+  c0(NULL);
   return 0;
 }

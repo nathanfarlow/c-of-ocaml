@@ -180,6 +180,9 @@ value caml_blit_bytes(value src, value src_pos, value dst, value dst_pos,
   memcpy(Str_val(dst) + dst_pos_val, Str_val(src) + src_pos_val, len_val);
   return Val_unit;
 }
+
+/* TODO: Implement this */
+value caml_register_global(value a, value b, value c) { return Val_unit; }
 value c1875(value *env);
 value c2222(value *env);
 value c1898(value *env);
@@ -327,9 +330,48 @@ value c0(value *env) {
 
 b0:
   value e = /* undefined */ Val_unit;
+  value aK = caml_alloc(2, 248, caml_copy_string("Out_of_memory"), Val_int(-1));
+  value aL = caml_alloc(2, 248, caml_copy_string("Sys_error"), Val_int(-2));
+  value aM = caml_alloc(2, 248, caml_copy_string("Failure"), Val_int(-3));
   value f =
       caml_alloc(2, 248, caml_copy_string("Invalid_argument"), Val_int(-4));
+  value aN = caml_alloc(2, 248, caml_copy_string("End_of_file"), Val_int(-5));
+  value aO =
+      caml_alloc(2, 248, caml_copy_string("Division_by_zero"), Val_int(-6));
+  value aP = caml_alloc(2, 248, caml_copy_string("Not_found"), Val_int(-7));
+  value aQ = caml_alloc(2, 248, caml_copy_string("Match_failure"), Val_int(-8));
+  value aR =
+      caml_alloc(2, 248, caml_copy_string("Stack_overflow"), Val_int(-9));
+  value aS =
+      caml_alloc(2, 248, caml_copy_string("Sys_blocked_io"), Val_int(-10));
+  value aT =
+      caml_alloc(2, 248, caml_copy_string("Assert_failure"), Val_int(-11));
+  value aU = caml_alloc(2, 248, caml_copy_string("Undefined_recursive_module"),
+                        Val_int(-12));
   value g = caml_copy_string("String.get");
+  value aV = caml_register_global(
+      Val_int(11), aU, caml_copy_string("Undefined_recursive_module"));
+  value aW =
+      caml_register_global(Val_int(10), aT, caml_copy_string("Assert_failure"));
+  value aX =
+      caml_register_global(Val_int(9), aS, caml_copy_string("Sys_blocked_io"));
+  value aY =
+      caml_register_global(Val_int(8), aR, caml_copy_string("Stack_overflow"));
+  value aZ =
+      caml_register_global(Val_int(7), aQ, caml_copy_string("Match_failure"));
+  value a0 =
+      caml_register_global(Val_int(6), aP, caml_copy_string("Not_found"));
+  value a1 = caml_register_global(Val_int(5), aO,
+                                  caml_copy_string("Division_by_zero"));
+  value a2 =
+      caml_register_global(Val_int(4), aN, caml_copy_string("End_of_file"));
+  value a3 =
+      caml_register_global(Val_int(3), f, caml_copy_string("Invalid_argument"));
+  value a4 = caml_register_global(Val_int(2), aM, caml_copy_string("Failure"));
+  value a5 =
+      caml_register_global(Val_int(1), aL, caml_copy_string("Sys_error"));
+  value a6 =
+      caml_register_global(Val_int(0), aK, caml_copy_string("Out_of_memory"));
 
   goto b218;
 b218:
@@ -540,12 +582,12 @@ value c1915(value *env) {
 
   value ae = env[0];
   value M = env[1];
-  value aK = env[2];
-  value aL = env[3];
+  value a7 = env[2];
+  value a8 = env[3];
 
 b1915:
-  value aQ = Val_bool(Val_int(0) == aL);
-  if (Bool_val(aQ)) {
+  value bb = Val_bool(Val_int(0) == a8);
+  if (Bool_val(bb)) {
     goto b1919;
   } else {
     goto b1923;
@@ -557,53 +599,53 @@ b2384:
 
   goto b2383;
 b2383:
-  value aM = Val_int(256);
-  return aM;
+  value a9 = Val_int(256);
+  return a9;
 b1923:
-  value aO = Val_int(Int_val(aL) + Int_val(Val_int(-1)));
-  value aP = caml_call(ae, 2, aK, aO);
-  value aN = caml_call(M, 2, aK, aP);
-  return aN;
+  value a$ = Val_int(Int_val(a8) + Int_val(Val_int(-1)));
+  value ba = caml_call(ae, 2, a7, a$);
+  value a_ = caml_call(M, 2, a7, ba);
+  return a_;
 }
 
 value c1860(value *env) {
 
-  value aR = env[0];
-  value aS = env[1];
+  value bc = env[0];
+  value bd = env[1];
 
 b1860:
-  value aV = Val_int(Int_val(aS) / Int_val(Val_int(2)));
-  value aW = Val_int(Int_val(aR) << Int_val(Val_int(8)));
+  value bg = Val_int(Int_val(bd) / Int_val(Val_int(2)));
+  value bh = Val_int(Int_val(bc) << Int_val(Val_int(8)));
 
   goto b2378;
 b2378:
 
   goto b2376;
 b2376:
-  value aU = Val_int(Int_val(aW) + Int_val(aV));
+  value bf = Val_int(Int_val(bh) + Int_val(bg));
 
   goto b2377;
 b2377:
-  value aT = Val_int(Int_val(aU) / Int_val(aS));
-  return aT;
+  value be = Val_int(Int_val(bf) / Int_val(bd));
+  return be;
 }
 
 value c2050(value *env) {
 
-  value aX = env[0];
+  value bi = env[0];
 
 b2050:
   value v = caml_alloc_closure(c2034, 1, 1);
   add_arg(v, v);
-  value aZ = caml_call(v, 1, aX);
+  value bk = caml_call(v, 1, bi);
 
   goto b2382;
 b2382:
 
   goto b2381;
 b2381:
-  value aY = Val_int(Int_val(aZ) << Int_val(Val_int(8)));
-  return aY;
+  value bj = Val_int(Int_val(bk) << Int_val(Val_int(8)));
+  return bj;
 }
 
 int main() {

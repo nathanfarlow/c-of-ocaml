@@ -1,6 +1,6 @@
 (library
- (name test_coo)
- (libraries coo async core core_unix expect_test_helpers_async)
+ (name test_c_of_ocaml)
+ (libraries c_of_ocaml async core core_unix expect_test_helpers_async)
  (preprocess
   (pps ppx_jane))
  (inline_tests
