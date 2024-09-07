@@ -1,11 +1,11 @@
-void gfx_Begin(void) {}
-void gfx_End(void) {}
-void gfx_SetDrawBuffer(void) {}
-void gfx_SwapDraw(void) {}
-void gfx_FillScreen(int color) {}
-void gfx_SetColor(int color) {}
-void gfx_Line(int x1, int y1, int x2, int y2) {}
+void caml_gfx_begin() {}
+void caml_gfx_end() {}
+void caml_gfx_set_draw_buffer() {}
+void caml_gfx_swap_draw() {}
+void caml_gfx_fill_screen() {}
+void caml_gfx_set_color() {}
+void caml_gfx_line() {}
 
-void os_ClrHome(void) {}
-void os_PutStrFull(char *str) {}
-int os_GetCSC(void) {}
+void caml_os_clr_home() {}
+void caml_os_put_str_full() {}
+void caml_os_get_csc() {}

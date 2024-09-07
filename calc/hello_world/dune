@@ -1,16 +1,27 @@
-(include ../../common.dune)
-
 (executable
  (name main)
  (libraries stdlib ti84ce)
  (modes byte))
 
+(include ../../common.dune)
+
 (rule
- (targets CAMLHELLO.8xp)
+ (target main.c)
+ (deps
+  %{project_root}/runtime/runtime.c
+  %{project_root}/calc/ti84ce/runtime.c
+  main.c.generated)
+ (action
+  (with-stdout-to
+   %{target}
+   (bash "cat %{deps}"))))
+
+(rule
+ (targets CAMLHI.8xp)
  (deps makefile main.c)
  (action
   (run make)))
 
 (alias
  (name default)
- (deps CAMLHELLO.8xp))
+ (deps CAMLHI.8xp))

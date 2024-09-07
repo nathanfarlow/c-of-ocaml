@@ -5,6 +5,16 @@
 
 (include ../common.dune)
 
+(rule
+ (target main.c)
+ (deps
+  (:runtime %{project_root}/runtime/runtime.c)
+  main.generated.c)
+ (action
+  (with-stdout-to
+   %{target}
+   (bash "cat %{runtime} %{dep:main.generated.c}"))))
+
 ; Also compile it:
 
 (rule

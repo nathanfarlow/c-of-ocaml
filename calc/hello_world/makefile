@@ -1,4 +1,4 @@
-NAME = CAMLHELLO
+NAME = CAMLHI
 DESCRIPTION = "hello from ocaml"
 COMPRESSED = NO
 

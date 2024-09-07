@@ -1,20 +1,6 @@
 (rule
- (targets main.generated.c)
+ (targets main.c.generated)
  (action
   (with-stdout-to
    %{targets}
    (run %{bin:c_of_ocaml} %{dep:main.bc}))))
-
-(rule
- (target main.c)
- (deps
-  (:runtime %{project_root}/runtime/runtime.c)
-  main.generated.c)
- (action
-  (with-stdout-to
-   %{target}
-   (bash "cat %{runtime} %{dep:main.generated.c}"))))
-
-(alias
-  (name default)
-  (deps main.c))
