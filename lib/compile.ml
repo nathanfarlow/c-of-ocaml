@@ -42,7 +42,8 @@ let rename ctx pc args =
 let closure_name pc = sprintf "c%d" pc
 let block_name pc = sprintf "b%d" pc
 
-(** Get the parameters of the block and all its children, recursively. *)
+(** Get the parameters of the block and all its children, recursively. Used to
+    forward declare variables at the beginning of a lifted closure *)
 let get_block_params ctx pc =
   Code.traverse
     { fold = Code.fold_children }
@@ -74,12 +75,12 @@ let rec compile_closure ctx pc info =
     |> String.concat ~sep:"\n"
   in
   let renaming = rename ctx pc (snd info.cont) in
-  let body = compile_block ctx visited pc |> fst in
+  let body = compile_block ctx visited pc in
   sprintf "%s {\n%s\n%s\n%s\n%s\n}\n\n" signature var_decls env_assignments renaming body
 
 and compile_block ctx visited pc =
   if Hash_set.mem visited pc
-  then "", false
+  then ""
   else (
     Hash_set.add visited pc;
     let block = Addr.Map.find pc ctx.prog.blocks in
@@ -88,7 +89,7 @@ and compile_block ctx visited pc =
       @ [ compile_last ctx visited block.branch ]
       |> String.concat ~sep:"\n"
     in
-    sprintf "%s:\n%s" (block_name pc) body, true)
+    sprintf "%s:\n%s" (block_name pc) body)
 
 and compile_instr ctx (instr, _) =
   match instr with
@@ -124,10 +125,10 @@ and compile_instr ctx (instr, _) =
 
 and compile_expr _ctx expr =
   match expr with
-  | Apply { f; args; exact } ->
-    let dbg = if exact then "/* exact */" else "/* not exact */" in
+  (* TODO: leverage exact flag *)
+  | Apply { f; args; exact = _ } ->
     let args_str = String.concat ~sep:", " (List.map args ~f:Var.to_string) in
-    sprintf "caml_call(%s, %d, %s) %s" (Var.to_string f) (List.length args) args_str dbg
+    sprintf "caml_call(%s, %d, %s)" (Var.to_string f) (List.length args) args_str
   | Block (tag, fields, _, _) ->
     let fields_str =
       Array.to_list fields |> List.map ~f:Var.to_string |> String.concat ~sep:", "
@@ -139,30 +140,27 @@ and compile_expr _ctx expr =
   | Closure _ -> assert false
   | Special special ->
     (match special with
-     | Undefined ->
-       "Val_unit /* aka undefined */" (* or some representation of OCaml's undefined *)
+     | Undefined -> "/* undefined */ Val_unit"
      | Alias_prim name -> sprintf "/* Alias primitive: %s */" name)
 
 and compile_last ctx visited (last, _) =
-  let compile_branch ctx pc args is_fresh =
+  let compile_branch ctx pc args =
     let renames = rename ctx pc args in
-    match is_fresh with
-    | true -> renames
-    | false -> sprintf "%s\ngoto %s;" renames (block_name pc)
+    sprintf "%s\ngoto %s;" renames (block_name pc)
   in
   match last with
   | Return var -> sprintf "return %s;" (Var.to_string var)
   | Raise (var, _) -> sprintf "caml_raise(%s);" (Var.to_string var)
   | Stop -> "return Val_unit;"
   | Branch (pc, args) ->
-    let block, fresh = compile_block ctx visited pc in
-    let branch = compile_branch ctx pc args fresh in
+    let block = compile_block ctx visited pc in
+    let branch = compile_branch ctx pc args in
     sprintf "%s\n%s" branch block
   | Cond (var, (pc1, args1), (pc2, args2)) ->
-    let true_branch = compile_branch ctx pc1 args1 false in
-    let false_branch = compile_branch ctx pc2 args2 false in
-    let true_block = compile_block ctx visited pc1 |> fst in
-    let false_block = compile_block ctx visited pc2 |> fst in
+    let true_branch = compile_branch ctx pc1 args1 in
+    let false_branch = compile_branch ctx pc2 args2 in
+    let true_block = compile_block ctx visited pc1 in
+    let false_block = compile_block ctx visited pc2 in
     sprintf
       "if (Bool_val(%s)) { %s } else { %s }\n%s\n%s"
       (Var.to_string var)
@@ -174,17 +172,18 @@ and compile_last ctx visited (last, _) =
     let cases =
       Array.to_list arr
       |> List.mapi ~f:(fun i (pc, args) ->
-        let branch = compile_branch ctx pc args false in
-        let block = compile_block ctx visited pc |> fst in
+        let branch = compile_branch ctx pc args in
+        let block = compile_block ctx visited pc in
         sprintf "case %d: %s\n%s" i branch block)
       |> String.concat ~sep:"\n"
     in
     sprintf "switch (Int_val(%s)) {\n%s\n  }" (Var.to_string var) cases
   | Pushtrap ((pc, args), _, (pc2, args2)) ->
-    let branch = compile_branch ctx pc args false in
-    let block = compile_block ctx visited pc |> fst in
-    let handler = compile_branch ctx pc2 args2 false in
-    let handler_block = compile_block ctx visited pc2 |> fst in
+    (* TODO: this is nonsense *)
+    let branch = compile_branch ctx pc args in
+    let block = compile_block ctx visited pc in
+    let handler = compile_branch ctx pc2 args2 in
+    let handler_block = compile_block ctx visited pc2 in
     sprintf
       "%s\n%s\ncaml_pushtrap();\nif (caml_exception_pointer != NULL) { %s } else { %s }"
       branch
@@ -192,8 +191,8 @@ and compile_last ctx visited (last, _) =
       handler
       handler_block
   | Poptrap (pc, args) ->
-    let branch = compile_branch ctx pc args false in
-    let block = compile_block ctx visited pc |> fst in
+    let branch = compile_branch ctx pc args in
+    let block = compile_block ctx visited pc in
     sprintf "%s\n%s\ncaml_poptrap();" branch block
 
 and compile_constant c =
