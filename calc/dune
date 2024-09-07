@@ -13,7 +13,7 @@
 (rule
  (target main.combined.c)
  (deps
-  (:runtime %{project_root}/lib/runtime/runtime.c)
+  (:runtime %{project_root}/runtime/runtime.c)
   main.unformatted.c)
  (action
   (with-stdout-to

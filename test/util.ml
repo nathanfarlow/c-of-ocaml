@@ -18,7 +18,7 @@ let compile_and_run source =
           ; "-nostdlib"
           ; "-g"
           ; "-I"
-          ; "../example/stdlib/.stdlib.objs/byte"
+          ; "../runtime/stdlib/.stdlib.objs/byte"
           ; "-open"
           ; "Stdlib"
           ; "-c"
@@ -34,15 +34,15 @@ let compile_and_run source =
         ~args:
           [ "-g"
           ; "-I"
-          ; "../example/stdlib"
-          ; "../example/stdlib/stdlib.cma"
+          ; "../runtime/stdlib"
+          ; "../runtime/stdlib/stdlib.cma"
           ; "-o"
           ; bc
           ; cmo
           ]
         ()
     in
-    let%bind runtime = Reader.file_contents "../lib/runtime/runtime.c" in
+    let%bind runtime = Reader.file_contents "../runtime/runtime.c" in
     let string_in_chan = In_channel.create bc in
     let c_code = runtime ^ C_of_ocaml.Driver.go string_in_chan in
     let%bind () =
