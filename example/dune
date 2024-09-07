@@ -9,11 +9,11 @@
  (target main.c)
  (deps
   (:runtime %{project_root}/runtime/runtime.c)
-  main.generated.c)
+  main.c.generated)
  (action
   (with-stdout-to
    %{target}
-   (bash "cat %{runtime} %{dep:main.generated.c}"))))
+   (bash "cat %{deps}"))))
 
 ; Also compile it:
 

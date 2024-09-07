@@ -1,18 +1,27 @@
-(include ../../common.dune)
-
 (executable
  (name main)
- (libraries stdlib)
+ (libraries stdlib ti84ce)
  (modes byte))
 
-; Also compile it:
+(include ../../common.dune)
 
 (rule
- (target main.c.exe)
- (deps main.c)
+ (target main.c)
+ (deps
+  %{project_root}/runtime/runtime.c
+  %{project_root}/calc/ti84ce/runtime.c
+  main.c.generated)
  (action
-  (run %{cc} -ansi -Og -g -o main.c.exe %{deps})))
+  (with-stdout-to
+   %{target}
+   (bash "cat %{deps}"))))
+
+(rule
+ (targets CAMLCUBE.8xp)
+ (deps makefile main.c)
+ (action
+  (run make)))
 
 (alias
  (name default)
- (deps main.c.exe))
+ (deps CAMLCUBE.8xp))
