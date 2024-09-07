@@ -156,10 +156,12 @@ value caml_raise(value v) {
   exit(1);
 }
 
-value caml_create_bytes(value len) {
+value caml_create_bytes(value value_len) {
+  unatint len = Int_val(value_len);
   unatint num_values_for_string = len / sizeof(value) + 1;
   block *b = caml_alloc_block(num_values_for_string + 1, Tag_string);
   b->data[0] = Val_int(len);
+  Str_val((value)b)[len] = '\0';
   return (value)b;
 }
 
