@@ -42,61 +42,39 @@ let rename ctx pc args =
 
 let closure_name pc = sprintf "c%d" pc
 
+(** Get the parameters of the block and all its children, recursively. *)
 let get_block_params ctx pc =
-  (* For all blocks in the closure, for all of their parameters, *)
-  let block_params = Hash_set.create (module String) in
-  let rec collect_block_params pc =
-    if not (Hash_set.mem ctx.visited pc)
-    then (
-      Hash_set.add ctx.visited pc;
+  Code.traverse
+    { fold = Code.fold_children }
+    (fun pc acc ->
       let block = Addr.Map.find pc ctx.prog.blocks in
-      List.iter block.params ~f:(fun param ->
-        Hash_set.add block_params (Var.to_string param));
-      match block.branch with
-      | Branch (next_pc, _), _ -> collect_block_params next_pc
-      | Cond (_, (pc1, _), (pc2, _)), _ ->
-        collect_block_params pc1;
-        collect_block_params pc2
-      | Switch (_, arr), _ -> Array.iter arr ~f:(fun (pc, _) -> collect_block_params pc)
-      | Pushtrap ((pc1, _), _, (pc2, _)), _ ->
-        collect_block_params pc1;
-        collect_block_params pc2
-      | Poptrap (pc, _), _ -> collect_block_params pc
-      | _ -> ())
-  in
-  collect_block_params pc;
-  block_params
+      List.fold block.params ~init:acc ~f:(fun acc param ->
+        Set.add acc (Var.to_string param)))
+    pc
+    ctx.prog.blocks
+    (Set.empty (module String))
 ;;
 
 let rec compile_closure ctx pc info =
-  let all_params = info.free_vars @ info.params in
+  (* env is an array of values, where the first values are the captured
+     variables, and the rest are the arguments to the closure *)
   let signature = sprintf "value %s(value* env)" (closure_name pc) in
-  let block_params = get_block_params ctx pc in
   Hash_set.clear ctx.visited;
   (* Declare all block parameters at the top of the closure *)
   let var_decls =
-    Hash_set.to_list block_params
-    |> List.map ~f:(fun v -> sprintf "  value %s;" v)
+    get_block_params ctx pc
+    |> Set.to_list
+    |> List.map ~f:(fun v -> sprintf "value %s;" v)
     |> String.concat ~sep:"\n"
   in
-  let param_assignments =
-    List.mapi all_params ~f:(fun i v ->
-      sprintf "  value %s = env[%d];" (Var.to_string v) i)
+  let env_assignments =
+    List.mapi (info.free_vars @ info.params) ~f:(fun i v ->
+      sprintf "value %s = env[%d];" (Var.to_string v) i)
     |> String.concat ~sep:"\n"
   in
-  let renaming = rename ctx pc (info.cont |> snd) in
+  let renaming = rename ctx pc (snd info.cont) in
   let body = compile_block ctx pc |> fst in
-  let num_free = List.length info.free_vars in
-  let num_params = List.length info.params in
-  let comment = sprintf "// free: %d, params: %d" num_free num_params in
-  sprintf
-    "%s\n%s {\n%s\n%s\n%s\n%s\n}\n\n"
-    comment
-    signature
-    var_decls
-    param_assignments
-    renaming
-    body
+  sprintf "%s {\n%s\n%s\n%s\n%s\n}\n\n" signature var_decls env_assignments renaming body
 
 and compile_block ctx (pc : Addr.t) =
   if Hash_set.mem ctx.visited pc
