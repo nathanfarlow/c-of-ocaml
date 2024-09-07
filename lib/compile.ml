@@ -10,7 +10,6 @@ type closure_info =
 
 type ctx =
   { prog : program
-  ; visited : Hash_set.M(Int).t (** The blocks that we've already written down *)
   ; closures : closure_info Hashtbl.M(Int).t
   }
 
@@ -60,7 +59,8 @@ let rec compile_closure ctx pc info =
   (* env is an array of values, where the first values are the captured
      variables, and the rest are the arguments to the closure *)
   let signature = sprintf "value %s(value* env)" (closure_name pc) in
-  Hash_set.clear ctx.visited;
+  (* The blocks we've written down so far *)
+  let visited = Hash_set.create (module Int) in
   (* Declare all block parameters at the top of the closure *)
   let var_decls =
     get_block_params ctx pc
@@ -74,17 +74,18 @@ let rec compile_closure ctx pc info =
     |> String.concat ~sep:"\n"
   in
   let renaming = rename ctx pc (snd info.cont) in
-  let body = compile_block ctx pc |> fst in
+  let body = compile_block ctx visited pc |> fst in
   sprintf "%s {\n%s\n%s\n%s\n%s\n}\n\n" signature var_decls env_assignments renaming body
 
-and compile_block ctx pc =
-  if Hash_set.mem ctx.visited pc
+and compile_block ctx visited pc =
+  if Hash_set.mem visited pc
   then "", false
   else (
-    Hash_set.add ctx.visited pc;
+    Hash_set.add visited pc;
     let block = Addr.Map.find pc ctx.prog.blocks in
     let body =
-      List.map block.body ~f:(compile_instr ctx) @ [ compile_last ctx block.branch ]
+      List.map block.body ~f:(compile_instr ctx)
+      @ [ compile_last ctx visited block.branch ]
       |> String.concat ~sep:"\n"
     in
     sprintf "%s:\n%s" (block_name pc) body, true)
@@ -142,7 +143,7 @@ and compile_expr _ctx expr =
        "Val_unit /* aka undefined */" (* or some representation of OCaml's undefined *)
      | Alias_prim name -> sprintf "/* Alias primitive: %s */" name)
 
-and compile_last ctx (last, _) =
+and compile_last ctx visited (last, _) =
   let compile_branch ctx pc args is_fresh =
     let renames = rename ctx pc args in
     match is_fresh with
@@ -154,14 +155,14 @@ and compile_last ctx (last, _) =
   | Raise (var, _) -> sprintf "caml_raise(%s);" (Var.to_string var)
   | Stop -> "return Val_unit;"
   | Branch (pc, args) ->
-    let block, fresh = compile_block ctx pc in
+    let block, fresh = compile_block ctx visited pc in
     let branch = compile_branch ctx pc args fresh in
     sprintf "%s\n%s" branch block
   | Cond (var, (pc1, args1), (pc2, args2)) ->
     let true_branch = compile_branch ctx pc1 args1 false in
     let false_branch = compile_branch ctx pc2 args2 false in
-    let true_block = compile_block ctx pc1 |> fst in
-    let false_block = compile_block ctx pc2 |> fst in
+    let true_block = compile_block ctx visited pc1 |> fst in
+    let false_block = compile_block ctx visited pc2 |> fst in
     sprintf
       "if (Bool_val(%s)) { %s } else { %s }\n%s\n%s"
       (Var.to_string var)
@@ -174,16 +175,16 @@ and compile_last ctx (last, _) =
       Array.to_list arr
       |> List.mapi ~f:(fun i (pc, args) ->
         let branch = compile_branch ctx pc args false in
-        let block = compile_block ctx pc |> fst in
+        let block = compile_block ctx visited pc |> fst in
         sprintf "case %d: %s\n%s" i branch block)
       |> String.concat ~sep:"\n"
     in
     sprintf "switch (Int_val(%s)) {\n%s\n  }" (Var.to_string var) cases
   | Pushtrap ((pc, args), _, (pc2, args2)) ->
     let branch = compile_branch ctx pc args false in
-    let block = compile_block ctx pc |> fst in
+    let block = compile_block ctx visited pc |> fst in
     let handler = compile_branch ctx pc2 args2 false in
-    let handler_block = compile_block ctx pc2 |> fst in
+    let handler_block = compile_block ctx visited pc2 |> fst in
     sprintf
       "%s\n%s\ncaml_pushtrap();\nif (caml_exception_pointer != NULL) { %s } else { %s }"
       branch
@@ -192,7 +193,7 @@ and compile_last ctx (last, _) =
       handler_block
   | Poptrap (pc, args) ->
     let branch = compile_branch ctx pc args false in
-    let block = compile_block ctx pc |> fst in
+    let block = compile_block ctx visited pc |> fst in
     sprintf "%s\n%s\ncaml_poptrap();" branch block
 
 and compile_constant c =
@@ -289,9 +290,7 @@ and compile_prim_arg = function
 ;;
 
 let f prog =
-  let ctx =
-    { prog; visited = Hash_set.create (module Int); closures = find_closures prog }
-  in
+  let ctx = { prog; closures = find_closures prog } in
   let closures = Hashtbl.to_alist ctx.closures in
   List.map closures ~f:(fun (pc, _) -> sprintf "value closure_%d(value* env);" pc)
   @ List.map closures ~f:(fun (pc, c) -> compile_closure ctx pc c)
