@@ -41,6 +41,7 @@ let rename ctx pc args =
 ;;
 
 let closure_name pc = sprintf "c%d" pc
+let block_name pc = sprintf "b%d" pc
 
 (** Get the parameters of the block and all its children, recursively. *)
 let get_block_params ctx pc =
@@ -76,18 +77,17 @@ let rec compile_closure ctx pc info =
   let body = compile_block ctx pc |> fst in
   sprintf "%s {\n%s\n%s\n%s\n%s\n}\n\n" signature var_decls env_assignments renaming body
 
-and compile_block ctx (pc : Addr.t) =
+and compile_block ctx pc =
   if Hash_set.mem ctx.visited pc
   then "", false
   else (
     Hash_set.add ctx.visited pc;
     let block = Addr.Map.find pc ctx.prog.blocks in
-    let compiled_instrs = List.map block.body ~f:(compile_instr ctx) in
-    let compiled_last = compile_last ctx block.branch in
-    let name = sprintf "block_%d" pc in
-    let body = String.concat ~sep:"\n" (compiled_instrs @ [ compiled_last ]) in
-    let args_as_str = String.concat ~sep:", " (List.map block.params ~f:Var.to_string) in
-    sprintf "%s:; //%s \n%s" name args_as_str body, true)
+    let body =
+      List.map block.body ~f:(compile_instr ctx) @ [ compile_last ctx block.branch ]
+      |> String.concat ~sep:"\n"
+    in
+    sprintf "%s:\n%s" (block_name pc) body, true)
 
 and compile_instr ctx (instr, _) =
   match instr with
@@ -147,7 +147,7 @@ and compile_last ctx (last, _) =
     let renames = rename ctx pc args in
     match is_fresh with
     | true -> renames
-    | false -> sprintf "%s\ngoto block_%d;" renames pc
+    | false -> sprintf "%s\ngoto %s;" renames (block_name pc)
   in
   match last with
   | Return var -> sprintf "  return %s;" (Var.to_string var)
