@@ -3,6 +3,8 @@
 (*   putc '\n' *)
 (* ;; *)
 
+open Io
+
 let print_int =
   let choices = "0123456789" in
   fun n ->

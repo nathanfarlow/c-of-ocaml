@@ -131,7 +131,7 @@ and compile_instr ctx (instr, _) =
     Printf.sprintf "  value %s = %s;" (Var.to_string var) (compile_expr ctx expr)
   | Assign (var1, var2) ->
     Printf.sprintf "  %s = %s;" (Var.to_string var1) (Var.to_string var2)
-  | Set_field (var, n, _, value) ->
+  | Set_field (var, n, value) ->
     Printf.sprintf "  Field(%s, %d) = %s;" (Var.to_string var) n (Var.to_string value)
   | Offset_ref (var, n) -> Printf.sprintf "  Field(%s, 0) += %d;" (Var.to_string var) n
   | Array_set (arr, idx, value) ->
@@ -157,7 +157,7 @@ and compile_expr _ctx expr =
       Array.to_list fields |> List.map ~f:Var.to_string |> String.concat ~sep:", "
     in
     Printf.sprintf "caml_alloc(%d, %d, %s)" (Array.length fields) tag fields_str
-  | Field (var, n, _) -> Printf.sprintf "Field(%s, %d)" (Var.to_string var) n
+  | Field (var, n) -> Printf.sprintf "Field(%s, %d)" (Var.to_string var) n
   | Constant c -> compile_constant c
   | Prim (prim, args) -> compile_prim prim args
   | Closure _ -> assert false
@@ -244,8 +244,6 @@ and compile_constant c =
       Array.to_list elements |> List.map ~f:compile_constant |> String.concat ~sep:", "
     in
     Printf.sprintf "caml_alloc(%d, %d, %s)" (Array.length elements) tag elements_str
-  | Int32 _ | NativeInt _ ->
-    assert false (* Should not be produced when compiling to Javascript *)
 
 and compile_prim prim args =
   match prim, args with

@@ -156,10 +156,12 @@ value caml_raise(value v) {
   exit(1);
 }
 
-value caml_create_bytes(value len) {
+value caml_create_bytes(value value_len) {
+  unatint len = Int_val(value_len);
   unatint num_values_for_string = len / sizeof(value) + 1;
   block *b = caml_alloc_block(num_values_for_string + 1, Tag_string);
   b->data[0] = Val_int(len);
+  Str_val((value)b)[len] = '\0';
   return (value)b;
 }
 
@@ -199,127 +201,168 @@ value caml_blit_bytes(value src, value src_pos, value dst, value dst_pos,
   memcpy(Str_val(dst) + dst_pos_val, Str_val(src) + src_pos_val, len_val);
   return Val_unit;
 }
-value closure_1828(value *env);
+value closure_1875(value *env);
 
-value closure_2002(value *env);
+value closure_2222(value *env);
 
-value closure_1883(value *env);
+value closure_1898(value *env);
 
-value closure_1866(value *env);
+value closure_2034(value *env);
 
-value closure_1843(value *env);
+value closure_2249(value *env);
 
 value closure_0(value *env);
 
-value closure_2018(value *env);
+value closure_1915(value *env);
 
-value closure_2217(value *env);
+value closure_1860(value *env);
 
-value closure_2190(value *env);
+value closure_2050(value *env);
 
 // free: 0, params: 2
-value closure_1828(value *env) {
+value closure_1875(value *env) {
 
   value a = env[0];
   value b = env[1];
 
-block_1828:; //
-  value c = Val_int(Int_val(b) / Int_val(Val_int(2)));
-  value d = Val_int(Int_val(a) << Int_val(Val_int(8)));
-
-block_2346:; //
-
-block_2344:; //
-  value e = Val_int(Int_val(d) + Int_val(c));
-
-block_2345:; //
-  value f = Val_int(Int_val(e) / Int_val(b));
-  return f;
+block_1875:; //
+  value c = Val_int(Int_val(a) * Int_val(b));
+  value d = Val_int((unsigned long)Int_val(c) >> Int_val(Val_int(8)));
+  return d;
 }
 
-// free: 1, params: 1
-value closure_2002(value *env) {
+// free: 4, params: 1
+value closure_2222(value *env) {
 
-  value g = env[0];
-  value h = env[1];
+  value e = env[0];
+  value f = env[1];
+  value g = env[2];
+  value h = env[3];
+  value i = env[4];
 
-block_2002:; //
-  value i = Val_bool(Val_int(0) == h);
-  if (Bool_val(i)) {
-    goto block_2006;
+block_2222:; //
+  value j = Val_bool(Val_int(0) == i);
+  if (Bool_val(j)) {
+    goto block_2226;
   } else {
-    goto block_2009;
+    goto block_2229;
   }
-block_2006:; //
-  value j = Val_int(1);
-  return j;
-block_2009:; //
-  value k = Val_int(Int_val(h) + Int_val(Val_int(-1)));
-  value l = caml_call(g, 1, k) /* exact */;
-  value m = Val_int(Int_val(h) * Int_val(l));
-  return m;
-}
+block_2226:; //
+  return e;
+block_2229:; //
+  value k = Val_int(Int_val(i) % Int_val(Val_int(10)));
+  value l = Val_int(Int_val(i) / Int_val(Val_int(10)));
+  value m = caml_call(h, 1, l) /* exact */;
 
-// free: 2, params: 2
-value closure_1883(value *env) {
+block_2375:; //
 
-  value n = env[0];
-  value o = env[1];
-  value p = env[2];
-  value q = env[3];
-
-block_1883:; //
-  value r = Val_bool(Val_int(0) == q);
-  if (Bool_val(r)) {
-    goto block_1887;
+block_1730:; //
+  value n = Val_bool(Int_val(Val_int(0)) <= Int_val(k));
+  if (Bool_val(n)) {
+    goto block_1734;
   } else {
-    goto block_1891;
+    goto block_1741;
   }
-block_1887:; //
+block_1734:; //
+  value o = Val_bool(Int_val(Val_int(10)) <= Int_val(k));
+  if (Bool_val(o)) {
+    goto block_1741;
+  } else {
+    goto block_1748;
+  }
+block_1741:; //
+  value p = caml_alloc(2, 0, f, g);
+  caml_raise(p);
+block_1748:; //
+  value q = caml_string_unsafe_get(caml_copy_string("0123456789"), k);
 
-block_2352:; //
-
-block_2351:; //
-  value s = Val_int(256);
-  return s;
-block_1891:; //
-  value t = Val_int(Int_val(q) + Int_val(Val_int(-1)));
-  value u = caml_call(n, 2, p, t) /* exact */;
-  value v = caml_call(o, 2, p, u) /* exact */;
-  return v;
+block_2374:; //
+  value r = caml_putc(q);
+  return e;
 }
 
 // free: 0, params: 1
-value closure_1866(value *env) {
+value closure_1898(value *env) {
 
-  value w = env[0];
+  value s = env[0];
 
-block_1866:; //
-  value x = Val_int(Int_val(w) + Int_val(Val_int(128)));
-  value y = Val_int((unsigned long)Int_val(x) >> Int_val(Val_int(8)));
-  return y;
+block_1898:; //
+  value t = Val_int(Int_val(s) + Int_val(Val_int(128)));
+  value u = Val_int((unsigned long)Int_val(t) >> Int_val(Val_int(8)));
+  return u;
 }
 
-// free: 0, params: 2
-value closure_1843(value *env) {
+// free: 1, params: 1
+value closure_2034(value *env) {
 
-  value z = env[0];
-  value A = env[1];
+  value v = env[0];
+  value w = env[1];
 
-block_1843:; //
-  value B = Val_int(Int_val(z) * Int_val(A));
-  value C = Val_int((unsigned long)Int_val(B) >> Int_val(Val_int(8)));
-  return C;
+block_2034:; //
+  value x = Val_bool(Val_int(0) == w);
+  if (Bool_val(x)) {
+    goto block_2038;
+  } else {
+    goto block_2041;
+  }
+block_2038:; //
+  value y = Val_int(1);
+  return y;
+block_2041:; //
+  value z = Val_int(Int_val(w) + Int_val(Val_int(-1)));
+  value A = caml_call(v, 1, z) /* exact */;
+  value B = Val_int(Int_val(w) * Int_val(A));
+  return B;
+}
+
+// free: 3, params: 1
+value closure_2249(value *env) {
+
+  value e = env[0];
+  value f = env[1];
+  value g = env[2];
+  value C = env[3];
+
+block_2249:; //
+  value h = caml_alloc_closure(closure_2222, 1, 4);
+  add_arg(h, e);
+  add_arg(h, f);
+  add_arg(h, g);
+  add_arg(h, h);
+  value D = Val_bool(Int_val(Val_int(0)) <= Int_val(C));
+  if (Bool_val(D)) {
+    goto block_2267;
+  } else {
+    goto block_2258;
+  }
+block_2267:; //
+  value E = Val_bool(Val_int(0) == C);
+  if (Bool_val(E)) {
+    goto block_2271;
+  } else {
+    goto block_2277;
+  }
+block_2271:; //
+  value F = caml_putc(Val_int(48));
+  return e;
+block_2277:; //
+  value G = caml_call(h, 1, C) /* exact */;
+  return G;
+block_2258:; //
+  value H = caml_putc(Val_int(45));
+  value I = Val_int(-Int_val(C));
+  value J = caml_call(h, 1, I) /* exact */;
+  return J;
 }
 
 // free: 0, params: 0
 value closure_0(value *env) {
 
 block_0:; //
-  value D = Val_unit /* aka undefined */;
-  value E =
+  value e = Val_unit /* aka undefined */;
+  value f =
       caml_alloc(2, 248, caml_copy_string("Invalid_argument"), Val_int(-4));
-  value F = caml_copy_string("String.get");
+  value g = caml_copy_string("String.get");
 
 block_218:; //
 
@@ -329,259 +372,220 @@ block_1433:; //
 
 block_1753:; //
 
-block_2074:; //
-  value G = caml_alloc_closure(closure_1866, 1, 0);
+block_1801:; //
 
-  value o = caml_alloc_closure(closure_1843, 2, 0);
+block_2106:; //
+  value K = caml_alloc_closure(closure_1898, 1, 0);
 
-  value H = caml_alloc_closure(closure_1828, 2, 0);
+  value L = caml_alloc_closure(closure_1875, 2, 0);
 
-block_2348:; //
-
-block_2028:; //
-  value I = caml_alloc_closure(closure_2018, 1, 0);
-
-  value n = caml_alloc_closure(closure_1883, 2, 2);
-  add_arg(n, n);
-  add_arg(n, o);
-
-block_2347:; //
-
-block_2249:; //
-  value J = caml_alloc_closure(closure_2217, 1, 3);
-  add_arg(J, D);
-  add_arg(J, E);
-  add_arg(J, F);
-
-block_2384:; //
-
-block_1875:; //
-  value K = Val_int(512);
-
-block_2383:; //
-
-block_2382:; //
+  value M = caml_alloc_closure(closure_1860, 2, 0);
 
 block_2380:; //
-  value L = Val_int(256);
 
-block_2381:; //
-  value M = caml_call(H, 2, L, K) /* exact */;
+block_2060:; //
+  value N = caml_alloc_closure(closure_2050, 1, 0);
+
+  value O = caml_alloc_closure(closure_1915, 2, 2);
+  add_arg(O, O);
+  add_arg(O, L);
 
 block_2379:; //
 
-block_2377:; //
-  value N = Val_int(256000);
+block_2281:; //
+  value P = caml_alloc_closure(closure_2249, 1, 3);
+  add_arg(P, e);
+  add_arg(P, f);
+  add_arg(P, g);
+
+block_2416:; //
+
+block_1907:; //
+  value Q = Val_int(512);
+
+block_2415:; //
+
+block_2414:; //
+
+block_2412:; //
+  value R = Val_int(256);
+
+block_2413:; //
+  value S = caml_call(M, 2, R, Q) /* exact */;
+
+block_2411:; //
+
+block_2409:; //
+  value T = Val_int(256000);
+
+block_2410:; //
+
+block_2408:; //
+
+block_1986:; //
+  value U = Val_int(7);
+  value V = caml_call(N, 1, U) /* exact */;
+  value W = Val_int(7);
+  value X = caml_call(O, 2, S, W) /* exact */;
+  value Y = caml_call(M, 2, X, V) /* exact */;
+  value Z = Val_int(5);
+  value _ = caml_call(N, 1, Z) /* exact */;
+  value $ = Val_int(5);
+  value aa = caml_call(O, 2, S, $) /* exact */;
+  value ab = caml_call(M, 2, aa, _) /* exact */;
+  value ac = Val_int(3);
+  value ad = caml_call(N, 1, ac) /* exact */;
+  value ae = Val_int(3);
+  value af = caml_call(O, 2, S, ae) /* exact */;
+  value ag = caml_call(M, 2, af, ad) /* exact */;
+
+block_2392:; //
+
+block_2390:; //
+  value ah = Val_int(Int_val(S) - Int_val(ag));
+
+block_2391:; //
+
+block_2389:; //
+
+block_2387:; //
+  value ai = Val_int(Int_val(ah) + Int_val(ab));
+
+block_2388:; //
+
+block_2386:; //
+
+block_2385:; //
+  value aj = Val_int(Int_val(ai) - Int_val(Y));
+
+block_2407:; //
+  value ak = caml_call(L, 2, aj, T) /* exact */;
+
+block_2406:; //
+
+block_2404:; //
+  value al = Val_int(256000);
+
+block_2405:; //
+
+block_2403:; //
+
+block_1934:; //
+  value am = Val_int(6);
+  value an = caml_call(N, 1, am) /* exact */;
+  value ao = Val_int(6);
+  value ap = caml_call(O, 2, S, ao) /* exact */;
+  value aq = caml_call(M, 2, ap, an) /* exact */;
+  value ar = Val_int(4);
+  value as = caml_call(N, 1, ar) /* exact */;
+  value at = Val_int(4);
+  value au = caml_call(O, 2, S, at) /* exact */;
+  value av = caml_call(M, 2, au, as) /* exact */;
+  value aw = Val_int(2);
+  value ax = caml_call(N, 1, aw) /* exact */;
+  value ay = Val_int(2);
+  value az = caml_call(O, 2, S, ay) /* exact */;
+  value aA = caml_call(M, 2, az, ax) /* exact */;
+
+block_2401:; //
+
+block_2399:; //
+
+block_2400:; //
+
+block_2398:; //
+
+block_1885:; //
+  value aB = Val_int(Int_val(Val_int(256)) - Int_val(aA));
+
+block_2397:; //
+
+block_2396:; //
+
+block_1893:; //
+  value aC = Val_int(Int_val(aB) + Int_val(av));
+
+block_2395:; //
+
+block_2394:; //
+
+block_2393:; //
+  value aD = Val_int(Int_val(aC) - Int_val(aq));
+
+block_2402:; //
+  value aE = caml_call(L, 2, aD, al) /* exact */;
+  value aF = caml_call(K, 1, ak) /* exact */;
+  value aG = caml_call(P, 1, aF) /* exact */;
+  value aH = caml_putc(Val_int(32));
+  value aI = caml_call(K, 1, aE) /* exact */;
+  value aJ = caml_call(P, 1, aI) /* exact */;
+  return Val_unit;
+}
+
+// free: 2, params: 2
+value closure_1915(value *env) {
+
+  value O = env[0];
+  value L = env[1];
+  value aK = env[2];
+  value aL = env[3];
+
+block_1915:; //
+  value aM = Val_bool(Val_int(0) == aL);
+  if (Bool_val(aM)) {
+    goto block_1919;
+  } else {
+    goto block_1923;
+  }
+block_1919:; //
+
+block_2384:; //
+
+block_2383:; //
+  value aN = Val_int(256);
+  return aN;
+block_1923:; //
+  value aO = Val_int(Int_val(aL) + Int_val(Val_int(-1)));
+  value aP = caml_call(O, 2, aK, aO) /* exact */;
+  value aQ = caml_call(L, 2, aK, aP) /* exact */;
+  return aQ;
+}
+
+// free: 0, params: 2
+value closure_1860(value *env) {
+
+  value aR = env[0];
+  value aS = env[1];
+
+block_1860:; //
+  value aT = Val_int(Int_val(aS) / Int_val(Val_int(2)));
+  value aU = Val_int(Int_val(aR) << Int_val(Val_int(8)));
 
 block_2378:; //
 
 block_2376:; //
+  value aV = Val_int(Int_val(aU) + Int_val(aT));
 
-block_1954:; //
-  value O = Val_int(7);
-  value P = caml_call(I, 1, O) /* exact */;
-  value Q = Val_int(7);
-  value R = caml_call(n, 2, M, Q) /* exact */;
-  value S = caml_call(H, 2, R, P) /* exact */;
-  value T = Val_int(5);
-  value U = caml_call(I, 1, T) /* exact */;
-  value V = Val_int(5);
-  value W = caml_call(n, 2, M, V) /* exact */;
-  value X = caml_call(H, 2, W, U) /* exact */;
-  value Y = Val_int(3);
-  value Z = caml_call(I, 1, Y) /* exact */;
-  value _ = Val_int(3);
-  value $ = caml_call(n, 2, M, _) /* exact */;
-  value aa = caml_call(H, 2, $, Z) /* exact */;
-
-block_2360:; //
-
-block_2358:; //
-  value ab = Val_int(Int_val(M) - Int_val(aa));
-
-block_2359:; //
-
-block_2357:; //
-
-block_2355:; //
-  value ac = Val_int(Int_val(ab) + Int_val(X));
-
-block_2356:; //
-
-block_2354:; //
-
-block_2353:; //
-  value ad = Val_int(Int_val(ac) - Int_val(S));
-
-block_2375:; //
-  value ae = caml_call(o, 2, ad, N) /* exact */;
-
-block_2374:; //
-
-block_2372:; //
-  value af = Val_int(256000);
-
-block_2373:; //
-
-block_2371:; //
-
-block_1902:; //
-  value ag = Val_int(6);
-  value ah = caml_call(I, 1, ag) /* exact */;
-  value ai = Val_int(6);
-  value aj = caml_call(n, 2, M, ai) /* exact */;
-  value ak = caml_call(H, 2, aj, ah) /* exact */;
-  value al = Val_int(4);
-  value am = caml_call(I, 1, al) /* exact */;
-  value an = Val_int(4);
-  value ao = caml_call(n, 2, M, an) /* exact */;
-  value ap = caml_call(H, 2, ao, am) /* exact */;
-  value aq = Val_int(2);
-  value ar = caml_call(I, 1, aq) /* exact */;
-  value as = Val_int(2);
-  value at = caml_call(n, 2, M, as) /* exact */;
-  value au = caml_call(H, 2, at, ar) /* exact */;
-
-block_2369:; //
-
-block_2367:; //
-
-block_2368:; //
-
-block_2366:; //
-
-block_1853:; //
-  value av = Val_int(Int_val(Val_int(256)) - Int_val(au));
-
-block_2365:; //
-
-block_2364:; //
-
-block_1861:; //
-  value aw = Val_int(Int_val(av) + Int_val(ap));
-
-block_2363:; //
-
-block_2362:; //
-
-block_2361:; //
-  value ax = Val_int(Int_val(aw) - Int_val(ak));
-
-block_2370:; //
-  value ay = caml_call(o, 2, ax, af) /* exact */;
-  value az = caml_call(G, 1, ae) /* exact */;
-  value aA = caml_call(J, 1, az) /* exact */;
-  value aB = caml_putc(Val_int(32));
-  value aC = caml_call(G, 1, ay) /* exact */;
-  value aD = caml_call(J, 1, aC) /* exact */;
-  return Val_unit;
+block_2377:; //
+  value aW = Val_int(Int_val(aV) / Int_val(aS));
+  return aW;
 }
 
 // free: 0, params: 1
-value closure_2018(value *env) {
+value closure_2050(value *env) {
 
-  value aE = env[0];
+  value aX = env[0];
 
-block_2018:; //
-  value g = caml_alloc_closure(closure_2002, 1, 1);
-  add_arg(g, g);
-  value aF = caml_call(g, 1, aE) /* exact */;
+block_2050:; //
+  value v = caml_alloc_closure(closure_2034, 1, 1);
+  add_arg(v, v);
+  value aY = caml_call(v, 1, aX) /* exact */;
 
-block_2350:; //
+block_2382:; //
 
-block_2349:; //
-  value aG = Val_int(Int_val(aF) << Int_val(Val_int(8)));
-  return aG;
-}
-
-// free: 3, params: 1
-value closure_2217(value *env) {
-
-  value D = env[0];
-  value E = env[1];
-  value F = env[2];
-  value aH = env[3];
-
-block_2217:; //
-  value aI = caml_alloc_closure(closure_2190, 1, 4);
-  add_arg(aI, D);
-  add_arg(aI, E);
-  add_arg(aI, F);
-  add_arg(aI, aI);
-  value aJ = Val_bool(Int_val(Val_int(0)) <= Int_val(aH));
-  if (Bool_val(aJ)) {
-    goto block_2235;
-  } else {
-    goto block_2226;
-  }
-block_2235:; //
-  value aK = Val_bool(Val_int(0) == aH);
-  if (Bool_val(aK)) {
-    goto block_2239;
-  } else {
-    goto block_2245;
-  }
-block_2239:; //
-  value aL = caml_putc(Val_int(48));
-  return D;
-block_2245:; //
-  value aM = caml_call(aI, 1, aH) /* exact */;
-  return aM;
-block_2226:; //
-  value aN = caml_putc(Val_int(45));
-  value aO = Val_int(-Int_val(aH));
-  value aP = caml_call(aI, 1, aO) /* exact */;
-  return aP;
-}
-
-// free: 4, params: 1
-value closure_2190(value *env) {
-
-  value D = env[0];
-  value E = env[1];
-  value F = env[2];
-  value aI = env[3];
-  value aQ = env[4];
-
-block_2190:; //
-  value aR = Val_bool(Val_int(0) == aQ);
-  if (Bool_val(aR)) {
-    goto block_2194;
-  } else {
-    goto block_2197;
-  }
-block_2194:; //
-  return D;
-block_2197:; //
-  value aS = Val_int(Int_val(aQ) % Int_val(Val_int(10)));
-  value aT = Val_int(Int_val(aQ) / Int_val(Val_int(10)));
-  value aU = caml_call(aI, 1, aT) /* exact */;
-
-block_2343:; //
-
-block_1730:; //
-  value aV = Val_bool(Int_val(Val_int(0)) <= Int_val(aS));
-  if (Bool_val(aV)) {
-    goto block_1734;
-  } else {
-    goto block_1741;
-  }
-block_1734:; //
-  value aW = Val_bool(Int_val(Val_int(10)) <= Int_val(aS));
-  if (Bool_val(aW)) {
-    goto block_1741;
-  } else {
-    goto block_1748;
-  }
-block_1741:; //
-  value aX = caml_alloc(2, 0, E, F);
-  caml_raise(aX);
-block_1748:; //
-  value aY = caml_string_unsafe_get(caml_copy_string("0123456789"), aS);
-
-block_2342:; //
-  value aZ = caml_putc(aY);
-  return D;
+block_2381:; //
+  value aZ = Val_int(Int_val(aY) << Int_val(Val_int(8)));
+  return aZ;
 }
 
 int main() {
