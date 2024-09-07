@@ -47,9 +47,10 @@ let compile_and_run source =
     let c_code = runtime ^ C_of_ocaml.Driver.go string_in_chan in
     let%bind () =
       Process.run_expect_no_output_exn
-        ~prog:"gcc"
+        ~prog:"cc"
         ~args:
-          [ "-Og"
+          [ "-ansi"
+          ; "-Og"
           ; "-g"
           ; "-o"
           ; exe

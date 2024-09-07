@@ -66,7 +66,8 @@ value caml_call(value closure, unatint num_args, ...) {
 
   va_list args;
   va_start(args, num_args);
-  for (unatint i = 0; i < num_args; i++) {
+  unatint i;
+  for (i = 0; i < num_args; i++) {
     new_args[c->args_idx + i] = va_arg(args, value);
   }
   va_end(args);
@@ -98,10 +99,10 @@ value caml_copy_string(const char *s) {
   return (value)b;
 }
 
-value caml_alloc(natint size, uchar tag, ...) {
+value caml_alloc(uchar tag, natint size, ...) {
   block *b = caml_alloc_block(size, tag);
   va_list args;
-  va_start(args, tag);
+  va_start(args, size);
   natint i;
   for (i = 0; i < size; i++) {
     b->data[i] = va_arg(args, value);
@@ -131,8 +132,7 @@ value caml_string_unsafe_get(value s, value i) {
 }
 
 value caml_raise(value v) {
-  fprintf(stderr, "Exception raised: %ld\n", Int_val(v));
-  exit(1);
+  exit(-1);
 }
 
 value caml_create_bytes(value value_len) {

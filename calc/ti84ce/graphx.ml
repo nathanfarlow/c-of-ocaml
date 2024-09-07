@@ -1,0 +1,7 @@
+external begin_ : unit -> unit = "gfx_Begin"
+external end_ : unit -> unit = "gfx_End"
+external set_draw_buffer : unit -> unit = "gfx_SetDrawBuffer"
+external swap_draw : unit -> unit = "gfx_SwapDraw"
+external fill_screen : int -> unit = "gfx_FillScreen"
+external set_color : int -> unit = "gfx_SetColor"
+external line : int -> int -> int -> int -> unit = "gfx_Line"

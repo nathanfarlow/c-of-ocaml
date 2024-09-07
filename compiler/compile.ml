@@ -89,7 +89,7 @@ and compile_block ctx visited pc =
       @ [ compile_last ctx visited block.branch ]
       |> String.concat ~sep:"\n"
     in
-    sprintf "%s:\n%s" (block_name pc) body
+    sprintf "%s:;\n%s" (block_name pc) body
 
 and compile_instr ctx (instr, _) =
   match instr with
@@ -133,7 +133,7 @@ and compile_expr _ctx expr =
     let fields_str =
       Array.to_list fields |> List.map ~f:Var.to_string |> String.concat ~sep:", "
     in
-    sprintf "caml_alloc(%d, %d, %s)" (Array.length fields) tag fields_str
+    sprintf "caml_alloc(%d, %d, %s)" tag (Array.length fields) fields_str
   | Field (var, n) -> sprintf "Field(%s, %d)" (Var.to_string var) n
   | Constant c -> compile_constant c
   | Prim (prim, args) -> compile_prim prim args
@@ -201,7 +201,7 @@ and compile_constant c =
     let elements_str =
       Array.to_list elements |> List.map ~f:compile_constant |> String.concat ~sep:", "
     in
-    sprintf "caml_alloc(%d, %d, %s)" (Array.length elements) tag elements_str
+    sprintf "caml_alloc(%d, %d, %s)" tag (Array.length elements) elements_str
 
 and compile_prim prim args =
   match prim, args with

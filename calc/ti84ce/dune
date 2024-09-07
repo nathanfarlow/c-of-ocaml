@@ -1,0 +1,19 @@
+(library
+ (name ti84ce)
+ (libraries stdlib)
+ (foreign_stubs
+  (language c)
+  (names stubs)))
+
+; (rule
+;  (targets CAMLCUBE.8xp)
+;  (deps makefile main.c)
+;  (action
+;   (run make)))
+
+; (executable
+;  (name main)
+;  (libraries stdlib)
+;  (modes byte))
+
+; (include ../common.dune)

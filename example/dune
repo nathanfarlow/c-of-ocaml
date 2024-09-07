@@ -11,7 +11,7 @@
  (target main.c.exe)
  (deps main.c)
  (action
-  (run %{cc} -Og -g -o main.c.exe %{deps})))
+  (run %{cc} -ansi -Og -g -o main.c.exe %{deps})))
 
 (alias
  (name default)

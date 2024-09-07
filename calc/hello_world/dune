@@ -1,0 +1,16 @@
+(include ../../common.dune)
+
+(executable
+ (name main)
+ (libraries stdlib ti84ce)
+ (modes byte))
+
+(rule
+ (targets CAMLHELLO.8xp)
+ (deps makefile main.c)
+ (action
+  (run make)))
+
+(alias
+ (name default)
+ (deps CAMLHELLO.8xp))
