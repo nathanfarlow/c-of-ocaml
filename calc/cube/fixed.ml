@@ -24,12 +24,12 @@ struct
 
   let sin x =
     let open! O in
-    x - (pow x 3 / !6) + (pow x 5 / !120) - (pow x 7 / !5040)
+    x - (pow x 3 / !6) + (pow x 5 / !120)
   ;;
 
   let cos x =
     let open! O in
-    of_int 1 - (pow x 2 / !2) + (pow x 4 / !24) - (pow x 6 / !720)
+    of_int 1 - (pow x 2 / !2) + (pow x 4 / !24)
   ;;
 end
 
@@ -38,47 +38,44 @@ include M (struct
 
     let fractional_bits = 4
     let of_int x = x lsl fractional_bits
-    let to_int x = (x + (fractional_bits lsr 2)) lsr fractional_bits
+
+    let to_int x =
+      let scale = 1 lsl fractional_bits in
+      (x + (scale / 2)) lsr fractional_bits
+    ;;
 
     module O = struct
-      let extract_8bit x shift = (x lsr shift) land 0xFF
-      let mul_8x8 a b = a land 0xFF * (b land 0xFF)
-
-      let fixed_point_mul x y fractional_bits =
-        let x0 = extract_8bit x 0 in
-        let x1 = extract_8bit x 8 in
-        let x2 = extract_8bit x 16 in
-        let y0 = extract_8bit y 0 in
-        let y1 = extract_8bit y 8 in
-        let y2 = extract_8bit y 16 in
-        let r0 = mul_8x8 x0 y0 in
-        let r1 = mul_8x8 x1 y0 + mul_8x8 x0 y1 in
-        let r2 = mul_8x8 x2 y0 + mul_8x8 x1 y1 + mul_8x8 x0 y2 in
-        let r3 = mul_8x8 x2 y1 + mul_8x8 x1 y2 in
-        let r4 = mul_8x8 x2 y2 in
-        (* Combine the 48-bit result *)
-        let high_bits = (r4 lsl 8) + r3 in
-        let mid_bits = r2 in
-        let low_bits = (r1 lsl 8) + (r0 lsr 8) in
-        (* Shift right by fractional_bits *)
-        let shifted_high = high_bits lsr fractional_bits in
-        let shifted_mid =
-          (mid_bits lsr fractional_bits) lor (high_bits lsl (24 - fractional_bits))
+      let mul a b rshift =
+        let split_12 x =
+          let low = x land 0xFFF in
+          let high = (x lsr 12) land 0xFFF in
+          high, low
         in
-        let shifted_low =
-          (low_bits lsr fractional_bits) lor (mid_bits lsl (24 - fractional_bits))
+        let mul_12 x y = x * y land 0xFFFFFF in
+        let a_high, a_low = split_12 a in
+        let b_high, b_low = split_12 b in
+        let p1 = mul_12 a_low b_low in
+        let p2 = mul_12 a_low b_high in
+        let p3 = mul_12 a_high b_low in
+        let p4 = mul_12 a_high b_high in
+        let lower = p1 in
+        let middle = (p2 + p3) land 0xFFFFFF in
+        let upper = p4 in
+        let result_low = (lower + ((middle land 0xFFF) lsl 12)) land 0xFFFFFF in
+        let result_high = (upper + (middle lsr 12)) land 0xFFFFFF in
+        let shifted_result =
+          let shifted_low = (result_low lsr rshift) land 0xFFFFFF in
+          let shifted_high =
+            ((result_high land ((1 lsl rshift) - 1)) lsl (24 - rshift)) land 0xFFFFFF
+          in
+          shifted_low lor shifted_high land 0xFFFFFF
         in
-        (* Combine the final 24-bit result *)
-        (shifted_high lsl 16) lor (shifted_mid land 0xFF00) lor (shifted_low land 0xFF)
+        shifted_result
       ;;
-
-      (* result lsr (fractional_bits - 16) *)
 
       let ( + ) x y = x + y
       let ( - ) x y = x - y
-
-      (* let ( * ) x y = (x * y) lsr fractional_bits *)
-      let ( * ) x y = fixed_point_mul x y fractional_bits
+      let ( * ) x y = mul x y fractional_bits
       let ( / ) x y = ((x lsl fractional_bits) + (y / 2)) / y
       let ( = ) x y = x = y
       let ( < ) x y = x < y
