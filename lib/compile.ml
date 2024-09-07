@@ -96,7 +96,7 @@ and compile_instr ctx (instr, _) =
     let free_vars = Hashtbl.find_exn ctx.closures pc |> fun c -> c.free_vars in
     let assignment =
       sprintf
-        "value %s = caml_alloc_closure(%s, %d, %d);\n"
+        "value %s = caml_alloc_closure(%s, %d, %d);"
         var_name
         (closure_name pc)
         (List.length params)
@@ -104,19 +104,19 @@ and compile_instr ctx (instr, _) =
     in
     let env_assignments =
       List.map free_vars ~f:(fun fv ->
-        sprintf "  add_arg(%s, %s);" var_name (Var.to_string fv))
+        sprintf "add_arg(%s, %s);" var_name (Var.to_string fv))
       |> String.concat ~sep:"\n"
     in
-    sprintf "%s%s" assignment env_assignments
+    sprintf "%s\n%s" assignment env_assignments
   | Let (var, expr) ->
-    sprintf "  value %s = %s;" (Var.to_string var) (compile_expr ctx expr)
-  | Assign (var1, var2) -> sprintf "  %s = %s;" (Var.to_string var1) (Var.to_string var2)
+    sprintf "value %s = %s;" (Var.to_string var) (compile_expr ctx expr)
+  | Assign (var1, var2) -> sprintf "%s = %s;" (Var.to_string var1) (Var.to_string var2)
   | Set_field (var, n, value) ->
-    sprintf "  Field(%s, %d) = %s;" (Var.to_string var) n (Var.to_string value)
-  | Offset_ref (var, n) -> sprintf "  Field(%s, 0) += %d;" (Var.to_string var) n
+    sprintf "Field(%s, %d) = %s;" (Var.to_string var) n (Var.to_string value)
+  | Offset_ref (var, n) -> sprintf "Field(%s, 0) += %d;" (Var.to_string var) n
   | Array_set (arr, idx, value) ->
     sprintf
-      "  Field(%s, Int_val(%s)) = %s;"
+      "Field(%s, Int_val(%s)) = %s;"
       (Var.to_string arr)
       (Var.to_string idx)
       (Var.to_string value)
@@ -150,20 +150,20 @@ and compile_last ctx (last, _) =
     | false -> sprintf "%s\ngoto %s;" renames (block_name pc)
   in
   match last with
-  | Return var -> sprintf "  return %s;" (Var.to_string var)
-  | Raise (var, _) -> sprintf "  caml_raise(%s);" (Var.to_string var)
-  | Stop -> "  return Val_unit;"
+  | Return var -> sprintf "return %s;" (Var.to_string var)
+  | Raise (var, _) -> sprintf "caml_raise(%s);" (Var.to_string var)
+  | Stop -> "return Val_unit;"
   | Branch (pc, args) ->
     let block, fresh = compile_block ctx pc in
     let branch = compile_branch ctx pc args fresh in
-    sprintf "  %s\n%s" branch block
+    sprintf "%s\n%s" branch block
   | Cond (var, (pc1, args1), (pc2, args2)) ->
     let true_branch = compile_branch ctx pc1 args1 false in
     let false_branch = compile_branch ctx pc2 args2 false in
     let true_block = compile_block ctx pc1 |> fst in
     let false_block = compile_block ctx pc2 |> fst in
     sprintf
-      "  if (Bool_val(%s)) { %s } else { %s }\n%s\n%s"
+      "if (Bool_val(%s)) { %s } else { %s }\n%s\n%s"
       (Var.to_string var)
       true_branch
       false_branch
@@ -171,25 +171,21 @@ and compile_last ctx (last, _) =
       false_block
   | Switch (var, arr) ->
     let cases =
-      Array.mapi arr ~f:(fun i (pc, args) ->
+      Array.to_list arr
+      |> List.mapi ~f:(fun i (pc, args) ->
         let branch = compile_branch ctx pc args false in
         let block = compile_block ctx pc |> fst in
-        sprintf "    case %d: %s\n%s" i branch block)
-      |> Array.to_list
+        sprintf "case %d: %s\n%s" i branch block)
       |> String.concat ~sep:"\n"
     in
-    sprintf "  switch (Int_val(%s)) {\n%s\n  }" (Var.to_string var) cases
+    sprintf "switch (Int_val(%s)) {\n%s\n  }" (Var.to_string var) cases
   | Pushtrap ((pc, args), _, (pc2, args2)) ->
-    (* TODO: maybe(?) better fresh detection *)
     let branch = compile_branch ctx pc args false in
     let block = compile_block ctx pc |> fst in
     let handler = compile_branch ctx pc2 args2 false in
     let handler_block = compile_block ctx pc2 |> fst in
     sprintf
-      "  %s\n\
-       %s\n\
-      \  caml_pushtrap();\n\
-      \  if (caml_exception_pointer != NULL) { %s } else { %s }"
+      "%s\n%s\ncaml_pushtrap();\nif (caml_exception_pointer != NULL) { %s } else { %s }"
       branch
       block
       handler
@@ -197,7 +193,7 @@ and compile_last ctx (last, _) =
   | Poptrap (pc, args) ->
     let branch = compile_branch ctx pc args false in
     let block = compile_block ctx pc |> fst in
-    sprintf "  %s\n  %s\ncaml_poptrap();" branch block
+    sprintf "%s\n%s\ncaml_poptrap();" branch block
 
 and compile_constant c =
   match c with
@@ -228,7 +224,7 @@ and compile_prim prim args =
   | Extern "%undefined", _ -> "/* undefined */ Val_unit"
   | Extern name, args -> compile_extern name args
   | Not, [ x ] -> sprintf "Val_bool(!Bool_val(%s))" (compile_prim_arg x)
-  | IsInt, [ x ] -> sprintf "Val_bool(Is_long(%s))" (compile_prim_arg x)
+  | IsInt, [ x ] -> sprintf "Val_bool(Is_int(%s))" (compile_prim_arg x)
   | Eq, [ x; y ] -> sprintf "Val_bool(%s == %s)" (compile_prim_arg x) (compile_prim_arg y)
   | Neq, [ x; y ] ->
     sprintf "Val_bool(%s != %s)" (compile_prim_arg x) (compile_prim_arg y)
@@ -250,54 +246,37 @@ and compile_prim prim args =
   | _ -> sprintf "/* Unhandled primitive :O */"
 
 and compile_extern name args =
+  (* Helper function for binary operators *)
+  let bin_op op a b =
+    sprintf
+      "Val_int(Int_val(%s) %s Int_val(%s))"
+      (compile_prim_arg a)
+      op
+      (compile_prim_arg b)
+  in
   match name, args with
-  | "%int_add", [ a; b ] ->
-    sprintf "Val_int(Int_val(%s) + Int_val(%s))" (compile_prim_arg a) (compile_prim_arg b)
-  | "%int_sub", [ a; b ] ->
-    sprintf "Val_int(Int_val(%s) - Int_val(%s))" (compile_prim_arg a) (compile_prim_arg b)
-  | "%int_mul", [ a; b ] ->
-    sprintf "Val_int(Int_val(%s) * Int_val(%s))" (compile_prim_arg a) (compile_prim_arg b)
-  | "%int_div", [ a; b ] ->
-    sprintf "Val_int(Int_val(%s) / Int_val(%s))" (compile_prim_arg a) (compile_prim_arg b)
-  | "%int_mod", [ a; b ] ->
-    sprintf
-      "Val_int(Int_val(%s) %% Int_val(%s))"
-      (compile_prim_arg a)
-      (compile_prim_arg b)
-  (* TODO: these are direct, no need to use wrapper *)
-  | "%direct_int_mul", [ a; b ] ->
-    sprintf "Val_int(Int_val(%s) * Int_val(%s))" (compile_prim_arg a) (compile_prim_arg b)
-  | "%direct_int_div", [ a; b ] ->
-    sprintf "Val_int(Int_val(%s) / Int_val(%s))" (compile_prim_arg a) (compile_prim_arg b)
-  | "%direct_int_mod", [ a; b ] ->
-    sprintf
-      "Val_int(Int_val(%s) %% Int_val(%s))"
-      (compile_prim_arg a)
-      (compile_prim_arg b)
-  | "%int_and", [ a; b ] ->
-    sprintf "(%s) & (%s)" (compile_prim_arg a) (compile_prim_arg b)
-  | "%int_or", [ a; b ] -> sprintf "(%s) | (%s)" (compile_prim_arg a) (compile_prim_arg b)
-  | "%int_xor", [ a; b ] ->
-    sprintf "(%s) ^ (%s)" (compile_prim_arg a) (compile_prim_arg b)
-  | "%int_lsl", [ a; b ] ->
-    sprintf
-      "Val_int(Int_val(%s) << Int_val(%s))"
-      (compile_prim_arg a)
-      (compile_prim_arg b)
+  | "%int_add", [ a; b ] -> bin_op "+" a b
+  | "%int_sub", [ a; b ] -> bin_op "-" a b
+  | "%int_mul", [ a; b ] -> bin_op "*" a b
+  | "%int_div", [ a; b ] -> bin_op "/" a b
+  | "%int_mod", [ a; b ] -> bin_op "%" a b
+  | "%direct_int_mul", [ a; b ] -> bin_op "*" a b
+  | "%direct_int_div", [ a; b ] -> bin_op "/" a b
+  | "%direct_int_mod", [ a; b ] -> bin_op "%" a b
+  | "%int_and", [ a; b ] -> bin_op "&" a b
+  | "%int_or", [ a; b ] -> bin_op "|" a b
+  | "%int_xor", [ a; b ] -> bin_op "^" a b
+  | "%int_lsl", [ a; b ] -> bin_op "<<" a b
+  | "%int_asr", [ a; b ] -> bin_op ">>" a b
   | "%int_lsr", [ a; b ] ->
     sprintf
-      "Val_int((unsigned long)Int_val(%s) >> Int_val(%s))"
-      (compile_prim_arg a)
-      (compile_prim_arg b)
-  | "%int_asr", [ a; b ] ->
-    sprintf
-      "Val_int(Int_val(%s) >> Int_val(%s))"
+      "Val_int((unatint)Int_val(%s) >> Int_val(%s))"
       (compile_prim_arg a)
       (compile_prim_arg b)
   | "%int_neg", [ a ] -> sprintf "Val_int(-Int_val(%s))" (compile_prim_arg a)
   | "%caml_format_int_special", [ a ] ->
     sprintf "caml_format_int(\"%s\", %s)" "%d" (compile_prim_arg a)
-  | "%direct_obj_tag", [ a ] -> sprintf "Tag_val(%s)" (compile_prim_arg a)
+  | "%direct_obj_tag", [ a ] -> sprintf "Val_int(Tag_val(%s))" (compile_prim_arg a)
   | "caml_array_unsafe_get", [ arr; idx ] ->
     sprintf "Field(%s, Int_val(%s))" (compile_prim_arg arr) (compile_prim_arg idx)
   | _ ->
@@ -313,16 +292,9 @@ let f prog =
   let ctx =
     { prog; visited = Hash_set.create (module Int); closures = find_closures prog }
   in
-  let l =
-    Hashtbl.to_alist ctx.closures
-    |> List.map ~f:(fun (pc, _) -> sprintf "value closure_%d(value* env);\n" pc)
-  in
-  let l2 =
-    Hashtbl.to_alist ctx.closures
-    |> List.map ~f:(fun (pc, closure) -> compile_closure ctx pc closure)
-  in
-  let l3 =
-    [ sprintf "int main() {\n  %s(NULL);\n  return 0;\n}\n" (closure_name prog.start) ]
-  in
-  String.concat ~sep:"\n" (l @ l2 @ l3)
+  let closures = Hashtbl.to_alist ctx.closures in
+  List.map closures ~f:(fun (pc, _) -> sprintf "value closure_%d(value* env);" pc)
+  @ List.map closures ~f:(fun (pc, c) -> compile_closure ctx pc c)
+  @ [ sprintf "int main() { %s(NULL); return 0; }" (closure_name prog.start) ]
+  |> String.concat ~sep:"\n"
 ;;
