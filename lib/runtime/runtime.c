@@ -59,55 +59,34 @@ void add_arg(value closure, value arg) {
 
 value caml_call(value closure, unatint num_args, ...) {
   closure_t *c = (closure_t *)(((block *)closure)->data);
+  unatint total_provided = c->args_idx + num_args;
+  value *new_args = malloc(total_provided * sizeof(value));
 
-  // Copy existing args
-  value *new_args = malloc((c->total_args) * sizeof(value));
   memcpy(new_args, c->args, c->args_idx * sizeof(value));
 
   va_list args;
   va_start(args, num_args);
-
-  for (unatint i = 0; i < num_args && c->args_idx + i < c->total_args; i++) {
+  for (unatint i = 0; i < num_args; i++) {
     new_args[c->args_idx + i] = va_arg(args, value);
   }
-
   va_end(args);
 
-  unatint total_provided = c->args_idx + num_args;
-
-  if (total_provided == c->total_args) {
-    // Exact number of args provided
-    value result = c->fun(new_args);
-    free(new_args);
-    return result;
-  } else if (total_provided < c->total_args) {
-    // Too few args, return new partial closure
-    value new_closure = caml_alloc_closure(
-        c->fun, c->total_args - total_provided, total_provided);
-    closure_t *new_c = (closure_t *)(((block *)new_closure)->data);
-    memcpy(new_c->args, new_args, total_provided * sizeof(value));
-    free(new_args);
-    return new_closure;
-  } else {
-    // Too many args, call function and recurse
-    value result = c->fun(new_args);
-    free(new_args);
-
-    // Prepare args for recursive call
-    unatint excess_args = num_args - (c->total_args - c->args_idx);
-    va_list excess_va_list;
-    va_start(excess_va_list, num_args);
-
-    // Skip the args we've already used
-    for (unatint i = 0; i < c->total_args - c->args_idx; i++) {
-      va_arg(excess_va_list, value);
+  value result;
+  if (total_provided >= c->total_args) {
+    result = c->fun(new_args);
+    if (total_provided > c->total_args) {
+      unatint excess_args = total_provided - c->total_args;
+      result = caml_call(result, excess_args, new_args + c->total_args);
     }
-
-    // Recursive call with remaining args
-    value final_result = caml_call(result, excess_args, excess_va_list);
-    va_end(excess_va_list);
-    return final_result;
+  } else {
+    result = caml_alloc_closure(c->fun, c->total_args - total_provided,
+                                total_provided);
+    closure_t *new_c = (closure_t *)(((block *)result)->data);
+    memcpy(new_c->args, new_args, total_provided * sizeof(value));
   }
+
+  free(new_args);
+  return result;
 }
 
 value caml_copy_string(const char *s) {

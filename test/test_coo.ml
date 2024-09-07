@@ -67,3 +67,39 @@ let () =
   None |}];
   return ()
 ;;
+
+let%expect_test "partial application" =
+  let%bind () =
+    compile_and_run
+      {|
+let () =
+  let f x y = x + y in
+  let g = f 3 in
+  Io.puts (Int.to_string (g 4))
+|}
+  in
+  [%expect {| 7 |}];
+  return ()
+;;
+
+let%expect_test "modules" =
+  let%bind () =
+    compile_and_run
+      {|
+module A = struct
+  let x = 3
+end
+
+module B (A : sig val x : int end) = struct
+  let y = A.x + 1
+end
+
+module C = B(A)
+
+let () =
+  Io.puts (Int.to_string (C.y))
+|}
+  in
+  [%expect {| 4 |}];
+  return ()
+;;
