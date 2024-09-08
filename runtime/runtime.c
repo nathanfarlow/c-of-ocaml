@@ -131,9 +131,7 @@ value caml_string_unsafe_get(value s, value i) {
   return Val_int(c);
 }
 
-value caml_raise(value v) {
-  exit(-1);
-}
+value caml_raise(value v) { exit(-1); }
 
 value caml_create_bytes(value value_len) {
   unatint len = Int_val(value_len);
