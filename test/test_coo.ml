@@ -104,7 +104,7 @@ let () =
   return ()
 ;;
 
-let%expect_test "modules" =
+let%expect_test "math" =
   let%bind () =
     compile_and_run
       {|
@@ -144,5 +144,34 @@ let () =
 |}
   in
   [%expect {| 10853284 |}];
+  return ()
+;;
+
+let%expect_test "array" =
+  let%bind () =
+    compile_and_run
+      {|
+let create_list n =
+  let rec aux acc remaining =
+    if remaining = 0 then acc else aux (String.make 1 'a' :: acc) (remaining - 1)
+  in
+  aux [] n
+;;
+
+let hd_exn l =
+  match l with
+  | [] -> failwith "hd_exn"
+  | hd :: _ -> hd
+
+let () =
+  for _ = 0 to 100 do
+    let l = create_list 10000 in
+    Io.putc (hd_exn l |> fun s -> String.get s 0)
+  done;
+;;
+|}
+  in
+  [%expect
+    {| aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa |}];
   return ()
 ;;
