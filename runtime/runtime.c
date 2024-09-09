@@ -24,9 +24,17 @@ typedef unsigned char uchar;
 
 typedef struct {
   unatint size;
+  struct block *next;
   uchar tag;
   value data[];
 } block;
+
+block *root;
+
+#define MAX_STACK_SIZE 1024 * 8
+value stack[MAX_STACK_SIZE];
+value *bp = stack;
+value *sp = stack;
 
 typedef struct {
   value (*fun)(value *);
@@ -74,7 +82,11 @@ value caml_call(value closure, unatint num_args, ...) {
 
   value result;
   if (total_provided >= c->total_args) {
+    value *prev_bp = bp;
+    bp = sp;
     result = c->fun(new_args);
+    sp = bp;
+    bp = prev_bp;
     if (total_provided > c->total_args) {
       unatint excess_args = total_provided - c->total_args;
       result = caml_call(result, excess_args, new_args + c->total_args);

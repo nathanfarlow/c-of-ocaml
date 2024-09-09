@@ -94,7 +94,7 @@ let rec compile_closure ctx pc info =
   let renaming = rename ctx stack pc (snd info.cont) in
   let body = compile_block ctx visited stack pc in
   sprintf
-    "%s {\nvalue bp[%d];\n%s\n%s\n%s\n}\n\n"
+    "%s {\nsp += %d;\n%s\n%s\n%s\n}\n\n"
     signature
     (Hashtbl.length stack)
     env_assignments
