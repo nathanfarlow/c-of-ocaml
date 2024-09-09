@@ -8,7 +8,7 @@
 let print_int n = Int.to_string n |> Io.puts
 
 let () =
-  for i = 0 to 20 do
+  for i = 0 to 200 do
     print_int (Fib.f i)
   done
 ;;

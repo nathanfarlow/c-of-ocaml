@@ -26,8 +26,10 @@ typedef unsigned char uchar;
 typedef struct {
   unatint size;
   struct block *next;
+  /* TODO: coallesce */
   uchar tag;
   uchar marked;
+  uchar offset;
   value data[];
 } block;
 
@@ -39,7 +41,7 @@ value *bp = stack;
 value *sp = stack;
 
 unatint num_bytes_allocated = 0;
-unatint max_bytes_until_gc = 512;
+unatint max_bytes_until_gc = 680;
 
 typedef struct {
   value (*fun)(value *);
@@ -95,14 +97,16 @@ void sweep() {
   block *b = root;
   block *prev = NULL;
 
+  num_bytes_allocated = 0;
+
   while (b != NULL) {
     block *next = (block *)b->next;
     /* dbg_printf("sweeping block %p\n", b); */
     if (b->marked) {
       b->marked = 0;
       prev = b;
+      num_bytes_allocated += sizeof(block) + b->size * sizeof(value) + 1;
     } else {
-      num_bytes_allocated -= sizeof(block) + b->size * sizeof(value);
       if (prev == NULL) {
         root = next;
       } else {
@@ -110,8 +114,7 @@ void sweep() {
       }
 
       dbg_printf("freeing block %p\n", b);
-      memset(b, 0xCA, sizeof(block) + b->size * sizeof(value));
-      free(b);
+      free((void *)(((uchar *)b) - b->offset));
     }
     b = next;
   }
@@ -131,7 +134,9 @@ void dbg_print_stack() {
 void gc() {
   dbg_printf("GC\n");
 
-  dbg_print_stack();
+  /* dbg_print_stack(); */
+
+  dbg_printf("before: %d bytes allocated\n", num_bytes_allocated);
 
   value *p;
   for (p = stack; p < sp; p++) {
@@ -140,20 +145,28 @@ void gc() {
 
   sweep();
   max_bytes_until_gc = num_bytes_allocated * 2;
+
+  dbg_printf("after: %d bytes allocated\n", num_bytes_allocated);
 }
 
 block *caml_alloc_block(unatint size, uchar tag) {
 
-  unatint wanted_bytes = sizeof(block) + size * sizeof(value);
-  unatint aligned_size = (wanted_bytes + 1) & ~1;
+  unatint wanted_bytes = sizeof(block) + size * sizeof(value) + 10;
+  unatint aligned_size = (wanted_bytes + 1);
 
   if (num_bytes_allocated + aligned_size > max_bytes_until_gc) {
     gc();
   }
 
   num_bytes_allocated += aligned_size;
-  block *b = (block *)((uintptr_t)(malloc(aligned_size + 2)) & ~1);
-  memset(b, 0xF0, aligned_size);
+  block *b = malloc(aligned_size);
+
+  if (Is_int((value)b)) {
+    b = (block *)(((uchar *)b) + 1);
+    b->offset = 1;
+  } else {
+    b->offset = 0;
+  }
 
   dbg_printf("allocated %d bytes at %p\n", aligned_size, b);
 
