@@ -14,9 +14,10 @@ typedef intptr_t natint;
 #define Val_int(x) (((value)(x) << 1) | 1)
 #define Int_val(v) ((natint)(v) >> 1)
 
-#define Tag_tuple 0
 #define Tag_closure 1
-#define Tag_string 2
+#define Tag_string 252
+#define Tag_object 248
+#define Tag_no_scan 251
 
 #define Val_unit Val_int(0)
 
@@ -26,15 +27,19 @@ typedef struct {
   unatint size;
   struct block *next;
   uchar tag;
+  uchar marked;
   value data[];
 } block;
 
 block *root;
 
-#define MAX_STACK_SIZE 1024 * 8
+#define MAX_STACK_SIZE 1024
 value stack[MAX_STACK_SIZE];
 value *bp = stack;
 value *sp = stack;
+
+unatint num_bytes_allocated = 0;
+unatint max_bytes_until_gc = 512;
 
 typedef struct {
   value (*fun)(value *);
@@ -43,10 +48,121 @@ typedef struct {
   value args[];
 } closure_t;
 
+#ifdef DEBUG
+#include <debug.h>
+#else
+#define dbg_printf(...)
+#endif
+
+void mark(value p) {
+  dbg_printf("checking %x\n", p);
+  if (Is_block(p)) {
+
+    block *b = (block *)p;
+
+    dbg_printf("%p is a block\n", b);
+
+    if (b->marked) {
+      dbg_printf("%p is already marked\n", b);
+      return;
+    }
+
+    b->marked = 1;
+    dbg_printf("marked %p\n", b);
+
+    if (b->tag == Tag_closure) {
+      dbg_printf("%p is a closure\n", b);
+      closure_t *c = (closure_t *)b->data;
+      unatint i;
+      for (i = 0; i < c->args_idx; i++) {
+        dbg_printf("going deeper with %x\n", c->args[i]);
+        mark(c->args[i]);
+      }
+    } else if (b->tag == Tag_object) {
+      dbg_printf("%p is an object\n", b);
+    } else if (b->tag < Tag_no_scan) {
+      dbg_printf("%p is something we should scan\n", b);
+      unatint i;
+      for (i = 0; i < b->size; i++) {
+        dbg_printf("going even deeper with %x\n", b->data[i]);
+        mark(b->data[i]);
+      }
+    }
+  }
+}
+
+void sweep() {
+  block *b = root;
+  block *prev = NULL;
+
+  while (b != NULL) {
+    block *next = (block *)b->next;
+    /* dbg_printf("sweeping block %p\n", b); */
+    if (b->marked) {
+      b->marked = 0;
+      prev = b;
+    } else {
+      num_bytes_allocated -= sizeof(block) + b->size * sizeof(value);
+      if (prev == NULL) {
+        root = next;
+      } else {
+        prev->next = (struct block *)next;
+      }
+
+      dbg_printf("freeing block %p\n", b);
+      memset(b, 0xCA, sizeof(block) + b->size * sizeof(value));
+      free(b);
+    }
+    b = next;
+  }
+}
+
+void dbg_print_stack() {
+  dbg_printf("stack base: %p\n", stack);
+  dbg_printf("stack pointer: %p\n", sp);
+  dbg_printf("stack size: %d\n", sp - stack);
+  dbg_printf("base pointer: %p\n", bp);
+  value *p;
+  for (p = stack; p < sp; p++) {
+    dbg_printf("%p: %x\n", p, *p);
+  }
+}
+
+void gc() {
+  dbg_printf("GC\n");
+
+  dbg_print_stack();
+
+  value *p;
+  for (p = stack; p < sp; p++) {
+    mark(*p);
+  }
+
+  sweep();
+  max_bytes_until_gc = num_bytes_allocated * 2;
+}
+
 block *caml_alloc_block(unatint size, uchar tag) {
-  block *b = malloc(sizeof(block) + size * sizeof(value));
+
+  unatint wanted_bytes = sizeof(block) + size * sizeof(value);
+  unatint aligned_size = (wanted_bytes + 1) & ~1;
+
+  if (num_bytes_allocated + aligned_size > max_bytes_until_gc) {
+    gc();
+  }
+
+  num_bytes_allocated += aligned_size;
+  block *b = (block *)((uintptr_t)(malloc(aligned_size + 2)) & ~1);
+  memset(b, 0xF0, aligned_size);
+
+  dbg_printf("allocated %d bytes at %p\n", aligned_size, b);
+
   b->size = size;
   b->tag = tag;
+  b->marked = 0;
+  b->next = (struct block *)root;
+  root = b;
+
   return b;
 }
 

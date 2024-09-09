@@ -11,6 +11,7 @@ type closure_info =
 type ctx =
   { prog : program
   ; closures : closure_info Hashtbl.M(Int).t
+  ; strings : Hash_set.M(String).t
   }
 
 let find_closures program =
@@ -78,6 +79,8 @@ let get_all_vars ctx pc =
   |> Hashtbl.of_alist_exn (module Int)
 ;;
 
+let string_name s = sprintf "s_%d" (String.hash s)
+
 let rec compile_closure ctx pc info =
   (* env is an array of values, where the first values are the captured
      variables, and the rest are the arguments to the closure *)
@@ -93,13 +96,16 @@ let rec compile_closure ctx pc info =
   in
   let renaming = rename ctx stack pc (snd info.cont) in
   let body = compile_block ctx visited stack pc in
-  sprintf
-    "%s {\nsp += %d;\n%s\n%s\n%s\n}\n\n"
-    signature
-    (Hashtbl.length stack)
-    env_assignments
-    renaming
-    body
+  [ signature
+  ; "{"
+  ; sprintf "memset(bp, 1, %d * sizeof(value));" (Hashtbl.length stack)
+  ; sprintf "sp += %d;" (Hashtbl.length stack)
+  ; env_assignments
+  ; renaming
+  ; body
+  ; "}"
+  ]
+  |> String.concat ~sep:"\n"
 
 and compile_block ctx visited stack pc =
   match Hash_set.mem visited pc with
@@ -144,7 +150,7 @@ and compile_instr ctx stack (instr, _) =
       (get stack idx)
       (get stack value)
 
-and compile_expr _ctx stack expr =
+and compile_expr ctx stack expr =
   match expr with
   (* TODO: leverage exact flag *)
   | Apply { f; args; exact = _ } ->
@@ -156,8 +162,8 @@ and compile_expr _ctx stack expr =
     in
     sprintf "caml_alloc(%d, %d, %s)" tag (Array.length fields) fields_str
   | Field (var, n) -> sprintf "Field(%s, %d)" (get stack var) n
-  | Constant c -> compile_constant c
-  | Prim (prim, args) -> compile_prim stack prim args
+  | Constant c -> compile_constant ctx c
+  | Prim (prim, args) -> compile_prim ctx stack prim args
   | Closure _ -> assert false
   | Special special ->
     (match special with
@@ -203,15 +209,21 @@ and compile_last ctx visited stack (last, _) =
   | Pushtrap _ -> assert false
   | Poptrap _ -> assert false
 
-and compile_constant c =
+and compile_constant ctx c =
   match c with
   | Int i -> sprintf "Val_int(%ld)" i
   | Float f -> sprintf "caml_copy_double(%f)" f
-  | String s -> sprintf "caml_copy_string(\"%s\")" s
+  | String s ->
+    Hash_set.add ctx.strings s;
+    string_name s
   | NativeString ns ->
     (match ns with
-     | Byte s -> sprintf "caml_copy_string(\"%s\")" s
-     | Utf (Utf8 s) -> sprintf "caml_copy_string(\"%s\")" s)
+     | Byte s ->
+       Hash_set.add ctx.strings s;
+       string_name s
+     | Utf (Utf8 s) ->
+       Hash_set.add ctx.strings s;
+       string_name s)
   | Int64 i -> sprintf "caml_copy_int64(%Ld)" i
   | Float_array fa ->
     let elements =
@@ -220,51 +232,59 @@ and compile_constant c =
     sprintf "caml_alloc_float_array(%d, (double[]){%s})" (Array.length fa) elements
   | Tuple (tag, elements, _) ->
     let elements_str =
-      Array.to_list elements |> List.map ~f:compile_constant |> String.concat ~sep:", "
+      Array.to_list elements
+      |> List.map ~f:(compile_constant ctx)
+      |> String.concat ~sep:", "
     in
     sprintf "caml_alloc(%d, %d, %s)" tag (Array.length elements) elements_str
 
-and compile_prim stack prim args =
+and compile_prim ctx stack prim args =
   match prim, args with
-  | Vectlength, [ x ] -> sprintf "Int_val(%s)" (compile_prim_arg stack x)
+  | Vectlength, [ x ] -> sprintf "Int_val(%s)" (compile_prim_arg ctx stack x)
   | Array_get, [ arr; idx ] ->
     sprintf
       "Field(%s, Int_val(%s))"
-      (compile_prim_arg stack arr)
-      (compile_prim_arg stack idx)
+      (compile_prim_arg ctx stack arr)
+      (compile_prim_arg ctx stack idx)
   | Extern "%undefined", _ -> "/* undefined */ Val_unit"
-  | Extern name, args -> compile_extern stack name args
-  | Not, [ x ] -> sprintf "Val_bool(!Bool_val(%s))" (compile_prim_arg stack x)
-  | IsInt, [ x ] -> sprintf "Val_bool(Is_int(%s))" (compile_prim_arg stack x)
+  | Extern name, args -> compile_extern ctx stack name args
+  | Not, [ x ] -> sprintf "Val_bool(!Bool_val(%s))" (compile_prim_arg ctx stack x)
+  | IsInt, [ x ] -> sprintf "Val_bool(Is_int(%s))" (compile_prim_arg ctx stack x)
   | Eq, [ x; y ] ->
-    sprintf "Val_bool(%s == %s)" (compile_prim_arg stack x) (compile_prim_arg stack y)
+    sprintf
+      "Val_bool(%s == %s)"
+      (compile_prim_arg ctx stack x)
+      (compile_prim_arg ctx stack y)
   | Neq, [ x; y ] ->
-    sprintf "Val_bool(%s != %s)" (compile_prim_arg stack x) (compile_prim_arg stack y)
+    sprintf
+      "Val_bool(%s != %s)"
+      (compile_prim_arg ctx stack x)
+      (compile_prim_arg ctx stack y)
   | Lt, [ x; y ] ->
     sprintf
       "Val_bool(Int_val(%s) < Int_val(%s))"
-      (compile_prim_arg stack x)
-      (compile_prim_arg stack y)
+      (compile_prim_arg ctx stack x)
+      (compile_prim_arg ctx stack y)
   | Le, [ x; y ] ->
     sprintf
       "Val_bool(Int_val(%s) <= Int_val(%s))"
-      (compile_prim_arg stack x)
-      (compile_prim_arg stack y)
+      (compile_prim_arg ctx stack x)
+      (compile_prim_arg ctx stack y)
   | Ult, [ x; y ] ->
     sprintf
       "Val_bool((uintnat)Int_val(%s) < (uintnat)Int_val(%s))"
-      (compile_prim_arg stack x)
-      (compile_prim_arg stack y)
+      (compile_prim_arg ctx stack x)
+      (compile_prim_arg ctx stack y)
   | _ -> sprintf "/* Unhandled primitive :O */"
 
-and compile_extern stack name args =
+and compile_extern ctx stack name args =
   (* Helper function for binary operators *)
   let bin_op op a b =
     sprintf
       "Val_int(Int_val(%s) %s Int_val(%s))"
-      (compile_prim_arg stack a)
+      (compile_prim_arg ctx stack a)
       op
-      (compile_prim_arg stack b)
+      (compile_prim_arg ctx stack b)
   in
   match name, args with
   | "%int_add", [ a; b ] -> bin_op "+" a b
@@ -283,31 +303,44 @@ and compile_extern stack name args =
   | "%int_lsr", [ a; b ] ->
     sprintf
       "Val_int((unatint)Int_val(%s) >> Int_val(%s))"
-      (compile_prim_arg stack a)
-      (compile_prim_arg stack b)
-  | "%int_neg", [ a ] -> sprintf "Val_int(-Int_val(%s))" (compile_prim_arg stack a)
+      (compile_prim_arg ctx stack a)
+      (compile_prim_arg ctx stack b)
+  | "%int_neg", [ a ] -> sprintf "Val_int(-Int_val(%s))" (compile_prim_arg ctx stack a)
   | "%caml_format_int_special", [ a ] ->
-    sprintf "caml_format_int(\"%s\", %s)" "%d" (compile_prim_arg stack a)
-  | "%direct_obj_tag", [ a ] -> sprintf "Val_int(Tag_val(%s))" (compile_prim_arg stack a)
+    sprintf "caml_format_int(\"%s\", %s)" "%d" (compile_prim_arg ctx stack a)
+  | "%direct_obj_tag", [ a ] ->
+    sprintf "Val_int(Tag_val(%s))" (compile_prim_arg ctx stack a)
   | "caml_array_unsafe_get", [ arr; idx ] ->
     sprintf
       "Field(%s, Int_val(%s))"
-      (compile_prim_arg stack arr)
-      (compile_prim_arg stack idx)
+      (compile_prim_arg ctx stack arr)
+      (compile_prim_arg ctx stack idx)
   | _ ->
-    let args_str = List.map args ~f:(compile_prim_arg stack) |> String.concat ~sep:", " in
+    let args_str =
+      List.map args ~f:(compile_prim_arg ctx stack) |> String.concat ~sep:", "
+    in
     sprintf "%s(%s)" name args_str
 
-and compile_prim_arg stack = function
+and compile_prim_arg ctx stack = function
   | Pv var -> get stack var
-  | Pc const -> compile_constant const
+  | Pc const -> compile_constant ctx const
 ;;
 
 let f prog =
-  let ctx = { prog; closures = find_closures prog } in
+  let ctx =
+    { prog; closures = find_closures prog; strings = Hash_set.create (module String) }
+  in
   let closures = Hashtbl.to_alist ctx.closures in
+  let closure_bodies = List.map closures ~f:(fun (pc, c) -> compile_closure ctx pc c) in
+  let strings = Hash_set.to_list ctx.strings in
   List.map closures ~f:(fun (pc, _) -> sprintf "value %s(value* env);" (closure_name pc))
-  @ List.map closures ~f:(fun (pc, c) -> compile_closure ctx pc c)
-  @ [ sprintf "int main() { %s(NULL); return 0; }" (closure_name prog.start) ]
+  @ List.map strings ~f:(fun s -> sprintf "value %s;" (string_name s))
+  @ closure_bodies
+  @ [ "int main() {" ]
+  @ List.concat_map strings ~f:(fun s ->
+    [ sprintf "%s = caml_copy_string(\"%s\");" (string_name s) s
+    ; sprintf "*(sp++) = %s;" (string_name s)
+    ])
+  @ [ sprintf "bp = sp; %s(NULL); return 0;}" (closure_name prog.start) ]
   |> String.concat ~sep:"\n"
 ;;

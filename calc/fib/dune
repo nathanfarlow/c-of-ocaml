@@ -17,11 +17,11 @@
    (bash "cat %{deps}"))))
 
 (rule
- (targets CAMLCUBE.8xp)
+ (targets CAMLHI.8xp)
  (deps makefile main.c)
  (action
   (run make debug)))
 
 (alias
  (name default)
- (deps CAMLCUBE.8xp))
+ (deps CAMLHI.8xp))

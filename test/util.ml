@@ -50,7 +50,7 @@ let compile_and_run source =
         ~prog:"cc"
         ~args:
           [ "-ansi"
-          ; "-Og"
+          ; "-O0"
           ; "-g"
           ; "-o"
           ; exe
