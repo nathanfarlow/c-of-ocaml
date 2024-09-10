@@ -26,7 +26,7 @@ typedef unsigned char uchar;
 typedef struct {
   unatint size;
   struct block *next;
-  /* TODO: coallesce */
+  /* TODO: coalesce */
   uchar tag;
   uchar marked;
   uchar offset;
@@ -50,43 +50,27 @@ typedef struct {
   value args[];
 } closure_t;
 
-#ifdef DEBUG
-#include <debug.h>
-#else
-#define dbg_printf(...)
-#endif
-
 void mark(value p) {
-  dbg_printf("checking %x\n", p);
   if (Is_block(p)) {
 
     block *b = (block *)p;
 
-    dbg_printf("%p is a block\n", b);
-
     if (b->marked) {
-      dbg_printf("%p is already marked\n", b);
       return;
     }
 
     b->marked = 1;
-    dbg_printf("marked %p\n", b);
 
     if (b->tag == Tag_closure) {
-      dbg_printf("%p is a closure\n", b);
       closure_t *c = (closure_t *)b->data;
       unatint i;
       for (i = 0; i < c->args_idx; i++) {
-        dbg_printf("going deeper with %x\n", c->args[i]);
         mark(c->args[i]);
       }
     } else if (b->tag == Tag_object) {
-      dbg_printf("%p is an object\n", b);
     } else if (b->tag < Tag_no_scan) {
-      dbg_printf("%p is something we should scan\n", b);
       unatint i;
       for (i = 0; i < b->size; i++) {
-        dbg_printf("going even deeper with %x\n", b->data[i]);
         mark(b->data[i]);
       }
     }
@@ -101,7 +85,6 @@ void sweep() {
 
   while (b != NULL) {
     block *next = (block *)b->next;
-    /* dbg_printf("sweeping block %p\n", b); */
     if (b->marked) {
       b->marked = 0;
       prev = b;
@@ -113,7 +96,6 @@ void sweep() {
         prev->next = (struct block *)next;
       }
 
-      dbg_printf("freeing block %p\n", b);
       free((void *)(((uchar *)b) - b->offset));
     }
     b = next;
@@ -121,22 +103,14 @@ void sweep() {
 }
 
 void dbg_print_stack() {
-  dbg_printf("stack base: %p\n", stack);
-  dbg_printf("stack pointer: %p\n", sp);
-  dbg_printf("stack size: %d\n", sp - stack);
-  dbg_printf("base pointer: %p\n", bp);
   value *p;
   for (p = stack; p < sp; p++) {
-    dbg_printf("%p: %x\n", p, *p);
   }
 }
 
 void gc() {
-  dbg_printf("GC\n");
 
   /* dbg_print_stack(); */
-
-  dbg_printf("before: %d bytes allocated\n", num_bytes_allocated);
 
   value *p;
   for (p = stack; p < sp; p++) {
@@ -145,8 +119,6 @@ void gc() {
 
   sweep();
   max_bytes_until_gc = num_bytes_allocated * 2;
-
-  dbg_printf("after: %d bytes allocated\n", num_bytes_allocated);
 }
 
 block *caml_alloc_block(unatint size, uchar tag) {
@@ -167,8 +139,6 @@ block *caml_alloc_block(unatint size, uchar tag) {
   } else {
     b->offset = 0;
   }
-
-  dbg_printf("allocated %d bytes at %p\n", aligned_size, b);
 
   b->size = size;
   b->tag = tag;
