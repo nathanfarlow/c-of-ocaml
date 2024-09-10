@@ -8,12 +8,9 @@ val cos : t -> t
 module O : sig
   val ( + ) : t -> t -> t
   val ( - ) : t -> t -> t
-  val ( * ) : t -> t -> t
   val ( / ) : t -> t -> t
-  val ( = ) : t -> t -> bool
-  val ( < ) : t -> t -> bool
-  val ( > ) : t -> t -> bool
-  val ( <= ) : t -> t -> bool
-  val ( >= ) : t -> t -> bool
   val ( ! ) : int -> t
+  val ( ~- ) : t -> t
+  val ( < ) : t -> t -> bool
+  val ( * ) : t -> t -> t
 end
