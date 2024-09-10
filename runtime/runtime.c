@@ -176,6 +176,8 @@ block *caml_alloc_block(unatint size, uchar tag) {
   b->next = (struct block *)root;
   root = b;
 
+  memset(b->data, 1, size * sizeof(value));
+
   return b;
 }
 

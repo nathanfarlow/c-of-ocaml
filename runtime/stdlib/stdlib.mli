@@ -284,11 +284,11 @@ external ( := ) : 'a ref -> 'a -> unit = "%setfield0"
 
 (** Increment the integer contained in the given reference.
     Equivalent to [fun r -> r := succ !r]. *)
-external incr : int ref -> unit = "%incr"
+val incr : int ref -> unit
 
 (** Decrement the integer contained in the given reference.
     Equivalent to [fun r -> r := pred !r]. *)
-external decr : int ref -> unit = "%decr"
+val decr : int ref -> unit
 
 (** {1 Result type} *)
 

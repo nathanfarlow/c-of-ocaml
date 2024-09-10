@@ -24,7 +24,8 @@ let () =
 ;;
   |}
   in
-  [%expect{|
+  [%expect
+    {|
     1
     1
     2
@@ -60,7 +61,7 @@ let () =
       | Some s -> Io.puts s)
 |}
   in
-  [%expect{|
+  [%expect {|
     hello
     world
     None |}];
