@@ -108,9 +108,13 @@ void dbg_print_stack() {
   }
 }
 
+uchar block_gc = 0;
+
 void gc() {
 
-  /* dbg_print_stack(); */
+  if (block_gc) {
+    return;
+  }
 
   value *p;
   for (p = stack; p < sp; p++) {

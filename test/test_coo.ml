@@ -175,3 +175,38 @@ let () =
     {| aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa |}];
   return ()
 ;;
+
+let%expect_test "list iter" =
+  let%bind () =
+    compile_and_run
+      {|
+let () =
+  let vertices =
+    [ 1, 1, 1; 1, 1, 1; 1, 1, 1; 1, 1, 1; 1, 1, 1; 1, 1, 1]
+  in
+  List.iter vertices ~f:(fun (x, y, z) ->
+    Io.puts (Int.to_string x))
+;;
+|}
+  in
+  [%expect.unreachable];
+  return ()
+[@@expect.uncaught_exn
+  {|
+  (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+     This is strongly discouraged as backtraces are fragile.
+     Please change this test to not include a backtrace. *)
+
+  (monitor.ml.Error
+    ("Process.run failed"
+      ((prog /tmp/build_f106cc_dune/._expect_.tmp.8a9591_test.tmp/a.out)
+        (args ()) (exit_status (Signal sigsegv)) (stdout "") (stderr "")))
+    ("Raised at Base__Error.raise in file \"src/error.ml\" (inlined), line 9, characters 14-30"
+      "Called from Base__Or_error.ok_exn in file \"src/or_error.ml\", line 107, characters 17-32"
+      "Called from Async_kernel__Deferred1.M.map.(fun) in file \"src/deferred1.ml\", line 17, characters 40-45"
+      "Called from Async_kernel__Job_queue.run_jobs in file \"src/job_queue.ml\", line 180, characters 6-47"
+      "Caught by monitor Monitor.protect"))
+  Raised at Base__Result.ok_exn in file "src/result.ml" (inlined), line 251, characters 17-26
+  Called from Async_unix__Thread_safe.block_on_async_exn in file "src/thread_safe.ml", line 168, characters 29-63
+  Called from Expect_test_collector.Make.Instance_io.exec in file "collector/expect_test_collector.ml", line 234, characters 12-19 |}]
+;;

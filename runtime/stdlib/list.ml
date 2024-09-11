@@ -23,17 +23,23 @@ let tl = function
   | _ :: l -> Some l
 ;;
 
-(* let nth l n = *)
-(*   if n < 0 *)
-(*   then invalid_arg "List.nth" *)
-(*   else ( *)
-(*     let rec nth_aux l n = *)
-(*       match l with *)
-(*       | [] -> None *)
-(*       | a :: l -> if n = 0 then Some a else nth_aux l (n - 1) *)
-(*     in *)
-(*     nth_aux l n) *)
-(* ;; *)
+let nth l n =
+  if n < 0
+  then invalid_arg "List.nth"
+  else (
+    let rec nth_aux l n =
+      match l with
+      | [] -> None
+      | a :: l -> if n = 0 then Some a else nth_aux l (n - 1)
+    in
+    nth_aux l n)
+;;
+
+let nth_exn l n =
+  match nth l n with
+  | None -> invalid_arg "List.nth"
+  | Some a -> a
+;;
 
 let append = ( @ )
 

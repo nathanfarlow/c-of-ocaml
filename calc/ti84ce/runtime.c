@@ -49,3 +49,9 @@ value caml_os_put_str_full(value str) {
 }
 
 value caml_os_get_csc(value _unit) { return Val_int(os_GetCSC()); }
+
+#include <debug.h>
+value caml_dbg_print(value s) {
+  dbg_printf("%s\n", Str_val(s));
+  return Val_unit;
+}

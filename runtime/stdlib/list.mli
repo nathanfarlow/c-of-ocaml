@@ -53,7 +53,9 @@ val tl : 'a list -> 'a list option
     Return [None] if the list is too short.
     @raise Invalid_argument if [n] is negative.
     @since 4.05 *)
-(* val nth : 'a list -> int -> 'a option *)
+val nth : 'a list -> int -> 'a option
+
+val nth_exn : 'a list -> int -> 'a
 
 (** List reversal. *)
 val rev : 'a list -> 'a list

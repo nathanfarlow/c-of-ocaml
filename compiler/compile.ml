@@ -138,7 +138,12 @@ and compile_instr ctx stack (instr, _) =
       |> String.concat ~sep:"\n"
     in
     sprintf "%s\n%s" assignment env_assignments
-  | Let (var, expr) -> let_ stack var (compile_expr ctx stack expr)
+  | Let (var, expr) ->
+    let let_ = let_ stack var (compile_expr ctx stack expr) in
+    (match expr with
+     | Constant (Tuple _) ->
+       [ "block_gc = 1;"; let_; "block_gc = 0;" ] |> String.concat ~sep:"\n"
+     | _ -> let_)
   | Assign (var1, var2) -> assign stack var1 (get stack var2)
   | Set_field (var, n, value) ->
     sprintf "Field(%s, %d) = %s;" (get stack var) n (get stack value)

@@ -9,3 +9,5 @@ void caml_gfx_line() {}
 void caml_os_clr_home() {}
 void caml_os_put_str_full() {}
 void caml_os_get_csc() {}
+
+void caml_dbg_print() {}
