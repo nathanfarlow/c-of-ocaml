@@ -5,17 +5,12 @@
    it will also be compiled to _build/default/example/main.c.exe.
 *)
 
-(* let print_int n = Int.to_string n |> Io.puts *)
-
-(* let () = *)
-(*   let foo = ref 0 in *)
-(*   for _ = 0 to 200 do *)
-(*     print_int (Fib.f !foo); *)
-(*     incr foo *)
-(*   done *)
-(* ;; *)
+let print_int n = Int.to_string n |> Io.puts
 
 let () =
-  let vertices = [ 1, 1, 1; 1, 1, 1; 1, 1, 1; 1, 1, 1; 1, 1, 1; 1, 1, 1 ] in
-  List.iter vertices ~f:(fun (x, _y, _z) -> Io.puts (Int.to_string x))
+  let foo = ref 0 in
+  for _ = 0 to 200 do
+    print_int (Fib.f !foo);
+    incr foo
+  done
 ;;
