@@ -4,6 +4,7 @@ val of_int : int -> t
 val to_int : t -> int
 val sin : t -> t
 val cos : t -> t
+val pi : t
 
 module O : sig
   val ( + ) : t -> t -> t
