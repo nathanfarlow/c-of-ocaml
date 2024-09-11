@@ -20,7 +20,7 @@
  (targets CAMLCUBE.8xp)
  (deps makefile main.c)
  (action
-  (run make debug)))
+  (run make)))
 
 (alias
  (name default)

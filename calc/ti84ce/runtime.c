@@ -38,6 +38,20 @@ value caml_gfx_line(value x1, value y1, value x2, value y2) {
   return Val_unit;
 }
 
+value caml_gfx_print_string(value s, value x, value y) {
+  gfx_PrintStringXY(Str_val(s), Int_val(x), Int_val(y));
+  return Val_unit;
+}
+
+value caml_gfx_get_string_width(value s) {
+  return Val_int(gfx_GetStringWidth(Str_val(s)));
+}
+
+value caml_gfx_set_text_fg_color(value color) {
+  gfx_SetTextFGColor(Int_val(color));
+  return Val_unit;
+}
+
 value caml_os_clr_home(value _unit) {
   os_ClrHome();
   return Val_unit;

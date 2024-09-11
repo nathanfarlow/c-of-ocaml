@@ -33,6 +33,7 @@ typedef struct {
   value data[];
 } block;
 
+uchar block_gc = 0;
 block *root;
 
 #define MAX_STACK_SIZE 1024
@@ -101,14 +102,6 @@ void sweep() {
     b = next;
   }
 }
-
-void dbg_print_stack() {
-  value *p;
-  for (p = stack; p < sp; p++) {
-  }
-}
-
-uchar block_gc = 0;
 
 void gc() {
 
@@ -248,7 +241,7 @@ value caml_string_unsafe_get(value s, value i) {
   return Val_int(c);
 }
 
-value caml_raise(value v) { exit(-1); }
+#define caml_raise(v) exit(-1)
 
 value caml_create_bytes(value value_len) {
   unatint len = Int_val(value_len);

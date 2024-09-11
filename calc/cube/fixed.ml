@@ -1,6 +1,6 @@
 type t = int
 
-let scale = 16
+let scale = 1 lsl 7
 let of_int x = x * scale
 let to_int x = if x >= 0 then (x + (scale / 2)) / scale else (x - (scale / 2)) / scale
 
@@ -20,12 +20,9 @@ let sin =
   let open O in
   let pi2 = pi * pi in
   fun x ->
-    let bhaskara x =
-      let num = !16 * x * (pi - x) in
-      let den = (!5 * pi2) - (!4 * x * (pi - x)) in
-      num / den
-    in
-    if x < pi then bhaskara x else -bhaskara (x - pi)
+    let num = !16 * x * (pi - x) in
+    let den = (!5 * pi2) - (!4 * x * (pi - x)) in
+    num / den
 ;;
 
 let cos =
