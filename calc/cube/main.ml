@@ -31,7 +31,7 @@ let draw_text =
   let s = "Vive OCaml !" in
   let x = (320 - Graphx.get_string_width s) / 2 in
   let y = 240 - 22 in
-  fun () -> Graphx.print_string "Vive OCaml !" x y
+  fun () -> Graphx.print_string s x y
 ;;
 
 let () =
@@ -41,9 +41,9 @@ let () =
   set_color 0xf0;
   set_text_fg_color 0xf0;
   let rec loop i =
+    fill_screen 0x00;
     let n = 40 in
     let angle = Fixed.O.(!i / !n * Fixed.pi) in
-    fill_screen 0x00;
     draw_cube angle;
     draw_text ();
     swap_draw ();

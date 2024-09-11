@@ -1,5 +1,5 @@
 (*
-   First, run `dune build`.
+   Run `dune build` in this directory.
 
    The C file will be written to _build/default/example/main.c. For convenience,
    it will also be compiled to _build/default/example/main.c.exe.
