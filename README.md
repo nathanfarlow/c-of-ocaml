@@ -2,7 +2,7 @@
 
 Compiles an OCaml program to a standalone ANSI C file. Here's a spinny cube program running on a calculator. Its OCaml source is [here](calc/cube).
 
-![](img/cube.gif)
+![](assets/cube.gif)
 
 ## Features
 - ✅ Garbage collector
