@@ -27,3 +27,5 @@ To build for ti 84 ce:
 3. `cd c-of-ocaml`
 4. `dune build calc/hello_world`
 5. Copy `_build/default/calc/hello_world/CAMLHI.8xp` to calculator
+
+If you're interested, you can see an example generated C file [here](assets/example_generated.c).
