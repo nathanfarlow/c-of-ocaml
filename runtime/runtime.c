@@ -289,5 +289,6 @@ value caml_blit_bytes(value src, value src_pos, value dst, value dst_pos,
   return Val_unit;
 }
 
-/* TODO: Implement this */
+/* TODO: Implement these */
 value caml_register_global(value a, value b, value c) { return Val_unit; }
+value caml_ensure_stack_capacity(value) { return Val_unit; }
