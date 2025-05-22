@@ -7,20 +7,20 @@
 (generate_opam_files true)
 
 (source
- (github username/reponame))
+ (github nathanfarlow/c-of-ocaml))
 
-(authors "Author Name")
+(authors "Nathan Farlow")
 
-(maintainers "Maintainer Name")
+(maintainers "Nathan Farlow")
 
 (license LICENSE)
 
-(documentation https://url/to/documentation)
+(documentation "https://github.com/nathanfarlow/c-of-ocaml/")
 
 (package
  (name c_of_ocaml)
- (synopsis "A short synopsis")
- (description "A longer description")
+ (synopsis "Compiles an OCaml program to a standalone ANSI C file")
+ (description "See https://farlow.dev/2025/05/17/ocaml-on-calculator for more information.")
  (depends
   ocaml
   dune
