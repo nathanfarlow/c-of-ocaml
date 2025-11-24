@@ -1,1 +1,7 @@
-let rec f k = if k < 2 then 1 else f (k - 1) + f (k - 2)
+let f n =
+  let rec loop i (a, b) =
+    if i = n then a
+    else loop (i + 1) (b, a + b)
+  in
+  loop 0 (0, 1)
+;;
