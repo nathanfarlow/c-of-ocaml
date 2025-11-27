@@ -27,22 +27,24 @@ let find_closures program =
   |> Hashtbl.of_alist_exn (module Int)
 ;;
 
+let var_name var = "v_" ^ Var.to_string var
+
 let let_ stack var exp =
   match Hashtbl.find stack (Var.idx var) with
   | Some idx -> sprintf "bp[%d] = %s;" idx exp
-  | None -> sprintf "value %s = %s;" (Var.to_string var) exp
+  | None -> sprintf "value %s = %s;" (var_name var) exp
 ;;
 
 let assign stack var exp =
   match Hashtbl.find stack (Var.idx var) with
   | Some idx -> sprintf "bp[%d] = %s;" idx exp
-  | None -> sprintf "%s = %s;" (Var.to_string var) exp
+  | None -> sprintf "%s = %s;" (var_name var) exp
 ;;
 
 let get stack var =
   match Hashtbl.find stack (Var.idx var) with
   | Some idx -> sprintf "bp[%d]" idx
-  | None -> Var.to_string var
+  | None -> var_name var
 ;;
 
 (** Rename continuation parameters to arguments using a sequence of statements like

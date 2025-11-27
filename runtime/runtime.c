@@ -6,6 +6,7 @@
 
 typedef uintptr_t value;
 typedef uintptr_t unatint;
+typedef uintptr_t uintnat;
 typedef intptr_t natint;
 
 #define Is_int(v) (((v) & 1) != 0)
@@ -223,6 +224,7 @@ value caml_alloc(uchar tag, natint size, ...) {
 
 #define Field(v, i) (((block *)(v))->data[i])
 #define Str_val(v) ((char *)&Field(v, 1))
+#define Tag_val(v) (((block *)(v))->tag)
 
 value caml_putc(value c) {
   putchar(Int_val(c));
@@ -287,6 +289,14 @@ value caml_blit_bytes(value src, value src_pos, value dst, value dst_pos,
 
   memcpy(Str_val(dst) + dst_pos_val, Str_val(src) + src_pos_val, len_val);
   return Val_unit;
+}
+
+value caml_int_compare(value a, value b) {
+  natint x = Int_val(a);
+  natint y = Int_val(b);
+  if (x < y) return Val_int(-1);
+  if (x > y) return Val_int(1);
+  return Val_int(0);
 }
 
 /* TODO: Implement these */
