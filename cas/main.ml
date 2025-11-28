@@ -292,12 +292,12 @@ let to_string =
     | Mul (a, b) -> paren prec 2 (emit 2 a ^ " * " ^ emit (right_prec 2 b) b)
     | Div (a, b) -> paren prec 2 (emit 2 a ^ " / " ^ emit 3 b)
     | Pow (a, b) -> paren prec 3 (emit 4 a ^ "^" ^ emit 3 b)
-    | Sin x -> "sin(" ^ emit 0 x ^ ")"
-    | Cos x -> "cos(" ^ emit 0 x ^ ")"
-    | Tan x -> "tan(" ^ emit 0 x ^ ")"
-    | Exp x -> "exp(" ^ emit 0 x ^ ")"
-    | Ln x -> "ln(" ^ emit 0 x ^ ")"
-    | Sqrt x -> "sqrt(" ^ emit 0 x ^ ")"
+    | Sin x -> "SIN(" ^ emit 0 x ^ ")"
+    | Cos x -> "COS(" ^ emit 0 x ^ ")"
+    | Tan x -> "TAN(" ^ emit 0 x ^ ")"
+    | Exp x -> "EXP(" ^ emit 0 x ^ ")"
+    | Ln x -> "LN(" ^ emit 0 x ^ ")"
+    | Sqrt x -> "SQRT(" ^ emit 0 x ^ ")"
   in
   emit 0
 ;;
@@ -410,12 +410,12 @@ let of_string s =
     let fn name ctor = keyword name *> (parens expr >>| ctor) in
     choice
       [ parens expr
-      ; fn "sin" (fun x -> Sin x)
-      ; fn "cos" (fun x -> Cos x)
-      ; fn "tan" (fun x -> Tan x)
-      ; fn "exp" (fun x -> Exp x)
-      ; fn "ln" (fun x -> Ln x)
-      ; fn "sqrt" (fun x -> Sqrt x)
+      ; fn "SIN" (fun x -> Sin x)
+      ; fn "COS" (fun x -> Cos x)
+      ; fn "TAN" (fun x -> Tan x)
+      ; fn "EXP" (fun x -> Exp x)
+      ; fn "LN" (fun x -> Ln x)
+      ; fn "SQRT" (fun x -> Sqrt x)
       ; (number >>| fun n -> Int n)
       ; (sat Char.is_alpha >>| fun c -> Var (String.make 1 c))
       ]
@@ -432,20 +432,20 @@ let show e =
 ;;
 
 let eval line =
-  if String.equal line "q" || String.equal line "quit"
+  if String.equal line "Q" || String.equal line "QUIT"
   then false
   else (
     (match String.lsplit2 line ~on:' ' with
-     | Some ("d", var) ->
+     | Some ("D", var) ->
        (match !last with
         | Some e -> show (deriv (String.strip var) e)
-        | None -> Io.puts "No expression.")
+        | None -> Io.puts "NO EXPRESSION.")
      | _ -> Option.iter (of_string line) ~f:show);
     true)
 ;;
 
 let () =
-  Io.puts "Enter expression to simplify, or 'd <var>' for derivative.";
+  Io.puts "ENTER EXPRESSION, 'D X' FOR DERIVATIVE, 'Q' TO QUIT.";
   let rec loop () =
     String.iter ~f:Io.putc "> ";
     let line = String.strip (Io.gets ()) in
