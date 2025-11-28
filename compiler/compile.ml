@@ -109,7 +109,6 @@ let rec compile_closure ctx pc info =
   ]
   |> String.concat ~sep:"\n"
 
-(* Compile a single closure allocation (without filling in free vars) *)
 and compile_closure_alloc ctx stack var params pc =
   let free_vars = Hashtbl.find_exn ctx.closures pc |> fun c -> c.free_vars in
   let exp =
@@ -121,20 +120,17 @@ and compile_closure_alloc ctx stack var params pc =
   in
   let_ stack var exp
 
-(* Compile filling in free vars for a closure *)
 and compile_closure_fill ctx stack var pc =
   let var_name = get stack var in
   let free_vars = Hashtbl.find_exn ctx.closures pc |> fun c -> c.free_vars in
   List.map free_vars ~f:(fun fv -> sprintf "add_arg(%s, %s);" var_name (get stack fv))
   |> String.concat ~sep:"\n"
 
-(* Check if an instruction is a closure allocation *)
 and is_closure_instr (instr, _) =
   match instr with
   | Let (_, Closure _) -> true
   | _ -> false
 
-(* Extract closure info from instruction *)
 and get_closure_info (instr, _) =
   match instr with
   | Let (var, Closure (params, (pc, _))) -> Some (var, params, pc)
@@ -180,7 +176,6 @@ and compile_block ctx visited stack pc =
 and compile_instr ctx stack (instr, _) =
   match instr with
   | Let (var, Closure (params, (pc, _))) ->
-    (* This case handles non-batched closures (shouldn't happen often) *)
     let alloc = compile_closure_alloc ctx stack var params pc in
     let fill = compile_closure_fill ctx stack var pc in
     sprintf "%s\n%s" alloc fill

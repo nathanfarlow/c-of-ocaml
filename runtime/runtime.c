@@ -213,7 +213,6 @@ static value caml_call_with_args(value closure, unatint num_args, value *args_ar
 }
 
 value caml_call(value closure, unatint num_args, ...) {
-  /* Read varargs into array first */
   value args_array[num_args];
   va_list args;
   va_start(args, num_args);
@@ -250,12 +249,10 @@ value caml_alloc(uchar tag, natint size, ...) {
   /* Now allocate (GC may run here, but args are on our stack) */
   block *b = caml_alloc_block(size, tag);
 
-  /* Copy from stack to block */
   for (i = 0; i < size; i++) {
     b->data[i] = saved_sp[i];
   }
 
-  /* Pop args from stack */
   sp = saved_sp;
   return (value)b;
 }
