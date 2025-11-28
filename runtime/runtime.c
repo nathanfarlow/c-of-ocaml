@@ -141,6 +141,15 @@ block *caml_alloc_block(unatint size, uchar tag) {
   num_bytes_allocated += aligned_size;
   block *b = malloc(aligned_size);
 
+  if (b == NULL) {
+    gc();
+    b = malloc(aligned_size);
+    if (b == NULL) {
+      fprintf(stderr, "Fatal error: out of memory :(\n");
+      exit(1);
+    }
+  }
+
   if (Is_int((value)b)) {
     b = (block *)(((uchar *)b) + 1);
     b->offset = 1;
