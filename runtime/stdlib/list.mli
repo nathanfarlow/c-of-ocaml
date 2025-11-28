@@ -146,3 +146,16 @@ val fold_left2 : f:('acc -> 'a -> 'b -> 'acc) -> 'acc -> 'a list -> 'b list -> '
       if the two lists are determined
       to have different lengths. Not tail-recursive. *)
 val fold_right2 : f:('a -> 'b -> 'acc -> 'acc) -> 'a list -> 'b list -> 'acc -> 'acc
+
+val filter_map : 'a list -> f:('a -> 'b option) -> 'b list
+
+val partition_map
+  :  'a list
+  -> f:('a -> [ `First of 'b | `Second of 'c ])
+  -> 'b list * 'c list
+
+val concat_map : 'a list -> f:('a -> 'b list) -> 'b list
+val reduce : 'a list -> f:('a -> 'a -> 'a) -> 'a option
+val sort : 'a list -> compare:('a -> 'a -> int) -> 'a list
+val sum : 'a list -> f:('a -> int) -> int
+val sort_and_group : ('k * 'v) list -> compare:('k -> 'k -> int) -> ('k * 'v list) list

@@ -52,3 +52,8 @@ val equal : t -> t -> bool
     @raise Invalid_argument if the argument is
                             outside the range 0--255. *)
 val of_int : int -> char
+
+val is_whitespace : char -> bool
+val is_digit : char -> bool
+val is_alpha : char -> bool
+val is_alphanum : char -> bool

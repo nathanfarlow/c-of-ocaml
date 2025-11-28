@@ -194,3 +194,72 @@ let rec fold_right2 ~f l1 l2 accu =
   | a1 :: l1, a2 :: l2 -> f a1 a2 (fold_right2 ~f l1 l2 accu)
   | _, _ -> invalid_arg "List.fold_right2"
 ;;
+
+let filter_map l ~f =
+  let rec aux acc = function
+    | [] -> rev acc
+    | x :: xs ->
+      (match f x with
+       | None -> aux acc xs
+       | Some y -> aux (y :: acc) xs)
+  in
+  aux [] l
+;;
+
+let partition_map l ~f =
+  let rec aux firsts seconds = function
+    | [] -> rev firsts, rev seconds
+    | x :: xs ->
+      (match f x with
+       | `First y -> aux (y :: firsts) seconds xs
+       | `Second y -> aux firsts (y :: seconds) xs)
+  in
+  aux [] [] l
+;;
+
+let concat_map l ~f =
+  let rec aux acc = function
+    | [] -> rev acc
+    | x :: xs -> aux (rev_append (f x) acc) xs
+  in
+  aux [] l
+;;
+
+let reduce l ~f =
+  match l with
+  | [] -> None
+  | x :: xs -> Some (fold_left ~f x xs)
+;;
+
+let sort l ~compare =
+  let rec insert x = function
+    | [] -> [ x ]
+    | y :: ys as l -> if compare x y <= 0 then x :: l else y :: insert x ys
+  in
+  fold_left ~f:(fun acc x -> insert x acc) [] l
+;;
+
+let sum l ~f = fold_left ~f:(fun acc x -> acc + f x) 0 l
+
+let sort_and_group l ~compare =
+  let sorted = sort l ~compare:(fun (k1, _) (k2, _) -> compare k1 k2) in
+  let rec group acc current_key current_vals = function
+    | [] ->
+      (match current_vals with
+       | [] -> rev acc
+       | _ -> rev ((current_key, rev current_vals) :: acc))
+    | (k, v) :: rest ->
+      if compare k current_key = 0
+      then group acc current_key (v :: current_vals) rest
+      else (
+        let acc' =
+          match current_vals with
+          | [] -> acc
+          | _ -> (current_key, rev current_vals) :: acc
+        in
+        group acc' k [ v ] rest)
+  in
+  match sorted with
+  | [] -> []
+  | (k, v) :: rest -> group [] k [ v ] rest
+;;

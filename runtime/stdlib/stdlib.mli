@@ -371,3 +371,4 @@ module List = Stdlib__List
 module Char = Stdlib__Char
 module Bytes = Stdlib__Bytes
 module Io = Stdlib__Io
+module Option = Stdlib__Option

@@ -38,7 +38,7 @@ typedef struct {
 uchar block_gc = 0;
 block *root;
 
-#define MAX_STACK_SIZE 65536
+#define MAX_STACK_SIZE (1024 * 16)
 value stack[MAX_STACK_SIZE];
 value *bp = stack;
 value *sp = stack;
@@ -55,8 +55,8 @@ typedef struct {
 
 void check_stack(const char *where) {
   if (sp > stack + MAX_STACK_SIZE) {
-    fprintf(stderr, "Stack overflow in %s: sp=%ld, max=%d\n",
-            where, (long)(sp - stack), MAX_STACK_SIZE);
+    fprintf(stderr, "Stack overflow in %s: sp=%ld, max=%d\n", where,
+            (long)(sp - stack), MAX_STACK_SIZE);
     exit(1);
   }
 }
@@ -125,7 +125,8 @@ void gc() {
 
   sweep();
   max_bytes_until_gc = num_bytes_allocated * 2;
-  if (max_bytes_until_gc < 4096) max_bytes_until_gc = 4096;
+  if (max_bytes_until_gc < 4096)
+    max_bytes_until_gc = 4096;
 }
 
 block *caml_alloc_block(unatint size, uchar tag) {
@@ -174,7 +175,8 @@ void add_arg(value closure, value arg) {
 }
 
 /* Args are pushed to global stack so GC can trace them */
-static value caml_call_with_args(value closure, unatint num_args, value *args_array) {
+static value caml_call_with_args(value closure, unatint num_args,
+                                 value *args_array) {
   closure_t *c = (closure_t *)(((block *)closure)->data);
   unatint total_provided = c->args_idx + num_args;
 
@@ -198,7 +200,8 @@ static value caml_call_with_args(value closure, unatint num_args, value *args_ar
 
     if (total_provided > c->total_args) {
       unatint excess_args = total_provided - c->total_args;
-      result = caml_call_with_args(result, excess_args, args_on_stack + c->total_args);
+      result = caml_call_with_args(result, excess_args,
+                                   args_on_stack + c->total_args);
     }
   } else {
     result = caml_alloc_closure(c->fun, c->total_args - total_provided,
@@ -299,7 +302,8 @@ value caml_string_of_bytes(value s) { return s; }
 value caml_string_notequal(value s1, value s2) {
   unatint len1 = Int_val(Field(s1, 0));
   unatint len2 = Int_val(Field(s2, 0));
-  if (len1 != len2) return Val_bool(1);
+  if (len1 != len2)
+    return Val_bool(1);
   return Val_bool(memcmp(Str_val(s1), Str_val(s2), len1) != 0);
 }
 
@@ -314,7 +318,8 @@ value caml_string_concat(value s1, value s2) {
   unatint total_len = len1 + len2;
   value new_string = caml_create_bytes(Val_int(total_len));
 
-  /* Re-read s1, s2 from stack in case they moved (they won't with our GC, but good practice) */
+  /* Re-read s1, s2 from stack in case they moved (they won't with our GC, but
+   * good practice) */
   s1 = saved_sp[0];
   s2 = saved_sp[1];
   memcpy(Str_val(new_string), Str_val(s1), len1);
@@ -347,8 +352,10 @@ value caml_blit_bytes(value src, value src_pos, value dst, value dst_pos,
 value caml_int_compare(value a, value b) {
   natint x = Int_val(a);
   natint y = Int_val(b);
-  if (x < y) return Val_int(-1);
-  if (x > y) return Val_int(1);
+  if (x < y)
+    return Val_int(-1);
+  if (x > y)
+    return Val_int(1);
   return Val_int(0);
 }
 

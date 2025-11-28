@@ -3,9 +3,12 @@ open! Async
 open! Util
 
 let%expect_test "trivial putc" =
-  let%bind () = compile_and_run {|
+  let%bind () =
+    compile_and_run
+      {|
     let () = Io.putc 'H';
-|} in
+|}
+  in
   [%expect {| H |}];
   return ()
 ;;
@@ -61,7 +64,8 @@ let () =
       | Some s -> Io.puts s)
 |}
   in
-  [%expect {|
+  [%expect
+    {|
     hello
     world
     None |}];
@@ -189,7 +193,8 @@ let () =
 ;;
 |}
   in
-  [%expect {|
+  [%expect
+    {|
     -1
     1
     1

@@ -67,12 +67,12 @@ let get_all_vars ctx pc =
   Code.traverse
     { fold = Code.fold_children }
     (fun pc () ->
-      let block = Addr.Map.find pc ctx.prog.blocks in
-      List.iter block.params ~f:(fun param -> Hash_set.add vars (Var.idx param));
-      List.iter block.body ~f:(fun (instr, _) ->
-        match instr with
-        | Let (var, _) -> Hash_set.add vars (Var.idx var)
-        | _ -> ()))
+       let block = Addr.Map.find pc ctx.prog.blocks in
+       List.iter block.params ~f:(fun param -> Hash_set.add vars (Var.idx param));
+       List.iter block.body ~f:(fun (instr, _) ->
+         match instr with
+         | Let (var, _) -> Hash_set.add vars (Var.idx var)
+         | _ -> ()))
     pc
     ctx.prog.blocks
     ();

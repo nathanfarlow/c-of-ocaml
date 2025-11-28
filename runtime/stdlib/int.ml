@@ -64,3 +64,37 @@ let to_string i =
     let sign = if i < 0 then "-" else "" in
     sign ^ (aux i [] |> List.map ~f:(String.make 1) |> String.concat ~sep:""))
 ;;
+
+let rec pow base exp =
+  if exp = 0
+  then 1
+  else if exp = 1
+  then base
+  else (
+    let half = pow base (exp / 2) in
+    if exp mod 2 = 0 then half * half else half * half * base)
+;;
+
+let of_string s =
+  let len = String.length s in
+  if len = 0
+  then failwith "Int.of_string"
+  else (
+    let start, sign =
+      if Char.equal (String.get s 0) '-'
+      then 1, -1
+      else if Char.equal (String.get s 0) '+'
+      then 1, 1
+      else 0, 1
+    in
+    let rec loop i acc =
+      if i >= len
+      then acc
+      else (
+        let c = String.get s i in
+        if Char.is_digit c
+        then loop (i + 1) ((acc * 10) + (Char.code c - 48))
+        else failwith "Int.of_string")
+    in
+    sign * loop start 0)
+;;

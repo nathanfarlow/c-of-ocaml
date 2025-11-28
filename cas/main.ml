@@ -1,245 +1,5 @@
-[@@@ocaml.warning "-32"]
-(* Helper modules to replace Core functions *)
+(* Adapted from https://github.com/nathanfarlow/ocaml-cas *)
 
-module Option = struct
-  let some_if cond x = if cond then Some x else None
-
-  let bind o ~f =
-    match o with
-    | None -> None
-    | Some x -> f x
-  ;;
-
-  let map o ~f =
-    match o with
-    | None -> None
-    | Some x -> Some (f x)
-  ;;
-
-  let value o ~default =
-    match o with
-    | None -> default
-    | Some x -> x
-  ;;
-
-  let iter o ~f =
-    match o with
-    | None -> ()
-    | Some x -> f x
-  ;;
-end
-
-module Char_ext = struct
-  let is_whitespace = function
-    | ' ' | '\t' | '\n' | '\r' -> true
-    | _ -> false
-  ;;
-
-  let is_digit = function
-    | '0' .. '9' -> true
-    | _ -> false
-  ;;
-
-  let is_alpha = function
-    | 'a' .. 'z' | 'A' .. 'Z' -> true
-    | _ -> false
-  ;;
-
-  let is_alphanum c = is_alpha c || is_digit c
-end
-
-module String_ext = struct
-  external unsafe_get : string -> int -> char = "%string_unsafe_get"
-
-  let sub s ~pos ~len =
-    let bytes = Bytes.create len in
-    for i = 0 to len - 1 do
-      Bytes.unsafe_set bytes i (unsafe_get s (pos + i))
-    done;
-    Bytes.to_string bytes
-  ;;
-
-  let lsplit2 s ~on =
-    let len = String.length s in
-    let rec find i =
-      if i >= len
-      then None
-      else if Char.equal (unsafe_get s i) on
-      then Some i
-      else find (i + 1)
-    in
-    match find 0 with
-    | None -> None
-    | Some idx ->
-      let left = sub s ~pos:0 ~len:idx in
-      let right = sub s ~pos:(idx + 1) ~len:(len - idx - 1) in
-      Some (left, right)
-  ;;
-
-  let strip s =
-    let len = String.length s in
-    let rec find_start i =
-      if i >= len
-      then i
-      else if Char_ext.is_whitespace (unsafe_get s i)
-      then find_start (i + 1)
-      else i
-    in
-    let rec find_end i =
-      if i <= 0
-      then 0
-      else if Char_ext.is_whitespace (unsafe_get s (i - 1))
-      then find_end (i - 1)
-      else i
-    in
-    let start = find_start 0 in
-    let stop = find_end len in
-    if start >= stop then "" else sub s ~pos:start ~len:(stop - start)
-  ;;
-
-  let is_empty s = String.length s = 0
-
-  let equal s1 s2 =
-    let len1 = String.length s1 in
-    let len2 = String.length s2 in
-    if len1 <> len2
-    then false
-    else (
-      let rec loop i =
-        if i >= len1
-        then true
-        else if not (Char.equal (unsafe_get s1 i) (unsafe_get s2 i))
-        then false
-        else loop (i + 1)
-      in
-      loop 0)
-  ;;
-
-  let compare s1 s2 =
-    let len1 = String.length s1 in
-    let len2 = String.length s2 in
-    let min_len = if len1 < len2 then len1 else len2 in
-    let rec loop i =
-      if i >= min_len
-      then Int.compare len1 len2
-      else (
-        let c = Char.compare (unsafe_get s1 i) (unsafe_get s2 i) in
-        if c <> 0 then c else loop (i + 1))
-    in
-    loop 0
-  ;;
-end
-
-module Int_ext = struct
-  let rec pow base exp =
-    if exp = 0
-    then 1
-    else if exp = 1
-    then base
-    else (
-      let half = pow base (exp / 2) in
-      if exp mod 2 = 0 then half * half else half * half * base)
-  ;;
-
-  let of_string s =
-    let len = String.length s in
-    if len = 0
-    then failwith "Int.of_string"
-    else (
-      let start, sign =
-        if Char.equal (String_ext.unsafe_get s 0) '-'
-        then 1, -1
-        else if Char.equal (String_ext.unsafe_get s 0) '+'
-        then 1, 1
-        else 0, 1
-      in
-      let rec loop i acc =
-        if i >= len
-        then acc
-        else (
-          let c = String_ext.unsafe_get s i in
-          if Char_ext.is_digit c
-          then loop (i + 1) ((acc * 10) + (Char.code c - 48))
-          else failwith "Int.of_string")
-      in
-      sign * loop start 0)
-  ;;
-end
-
-module List_ext = struct
-  let filter_map l ~f =
-    let rec aux acc = function
-      | [] -> List.rev acc
-      | x :: xs ->
-        (match f x with
-         | None -> aux acc xs
-         | Some y -> aux (y :: acc) xs)
-    in
-    aux [] l
-  ;;
-
-  let partition_map l ~f =
-    let rec aux firsts seconds = function
-      | [] -> List.rev firsts, List.rev seconds
-      | x :: xs ->
-        (match f x with
-         | `First y -> aux (y :: firsts) seconds xs
-         | `Second y -> aux firsts (y :: seconds) xs)
-    in
-    aux [] [] l
-  ;;
-
-  let concat_map l ~f =
-    let rec aux acc = function
-      | [] -> List.rev acc
-      | x :: xs -> aux (List.rev_append (f x) acc) xs
-    in
-    aux [] l
-  ;;
-
-  let reduce l ~f =
-    match l with
-    | [] -> None
-    | x :: xs -> Some (List.fold_left ~f x xs)
-  ;;
-
-  (* Simple insertion sort for small lists *)
-  let sort l ~compare =
-    let rec insert x = function
-      | [] -> [ x ]
-      | y :: ys as l -> if compare x y <= 0 then x :: l else y :: insert x ys
-    in
-    List.fold_left ~f:(fun acc x -> insert x acc) [] l
-  ;;
-
-  let sum l ~f = List.fold_left ~f:(fun acc x -> acc + f x) 0 l
-
-  (* Group consecutive elements with same key *)
-  let sort_and_group l ~compare =
-    let sorted = sort l ~compare:(fun (k1, _) (k2, _) -> compare k1 k2) in
-    let rec group acc current_key current_vals = function
-      | [] ->
-        (match current_vals with
-         | [] -> List.rev acc
-         | _ -> List.rev ((current_key, List.rev current_vals) :: acc))
-      | (k, v) :: rest ->
-        if compare k current_key = 0
-        then group acc current_key (v :: current_vals) rest
-        else (
-          let acc' =
-            match current_vals with
-            | [] -> acc
-            | _ -> (current_key, List.rev current_vals) :: acc
-          in
-          group acc' k [ v ] rest)
-    in
-    match sorted with
-    | [] -> []
-    | (k, v) :: rest -> group [] k [ v ] rest
-  ;;
-end
-
-(* The CAS expression type *)
 type t =
   | Int of int
   | Var of string
@@ -257,7 +17,7 @@ type t =
 let rec equal e1 e2 =
   match e1, e2 with
   | Int n1, Int n2 -> n1 = n2
-  | Var v1, Var v2 -> String_ext.equal v1 v2
+  | Var v1, Var v2 -> String.equal v1 v2
   | Add (a1, b1), Add (a2, b2) -> equal a1 a2 && equal b1 b2
   | Mul (a1, b1), Mul (a2, b2) -> equal a1 a2 && equal b1 b2
   | Div (a1, b1), Div (a2, b2) -> equal a1 a2 && equal b1 b2
@@ -271,13 +31,12 @@ let rec equal e1 e2 =
   | _ -> false
 ;;
 
-(* Comparison for sorting *)
 let rec compare e1 e2 =
   match e1, e2 with
   | Int n1, Int n2 -> Int.compare n1 n2
   | Int _, _ -> -1
   | _, Int _ -> 1
-  | Var v1, Var v2 -> String_ext.compare v1 v2
+  | Var v1, Var v2 -> String.compare v1 v2
   | Var _, _ -> -1
   | _, Var _ -> 1
   | Add (a1, b1), Add (a2, b2) ->
@@ -323,7 +82,7 @@ let neg e = Mul (Int (-1), e)
 let deriv var =
   let rec d = function
     | Int _ -> Int 0
-    | Var v -> Int (if String_ext.equal v var then 1 else 0)
+    | Var v -> Int (if String.equal v var then 1 else 0)
     | Add (a, b) -> Add (d a, d b)
     | Mul (a, b) -> Add (Mul (d a, b), Mul (a, d b))
     | Div (a, b) -> Div (Add (Mul (d a, b), neg (Mul (a, d b))), Mul (b, b))
@@ -345,13 +104,13 @@ let simplify =
   in
   (* Combine (term, count) pairs by summing counts, eliminating zeros. *)
   let combine_like_terms pairs =
-    List_ext.sort_and_group pairs ~compare
-    |> List_ext.filter_map ~f:(fun (key, vals) ->
-      let sum = List_ext.sum vals ~f:(fun x -> x) in
+    List.sort_and_group pairs ~compare
+    |> List.filter_map ~f:(fun (key, vals) ->
+      let sum = List.sum vals ~f:(fun x -> x) in
       Option.some_if (sum <> 0) (key, sum))
   in
   (* Canonical order so fixpoint terminates. *)
-  let sort_by_term ps = List_ext.sort ps ~compare:(fun (a, _) (b, _) -> compare a b) in
+  let sort_by_term ps = List.sort ps ~compare:(fun (a, _) (b, _) -> compare a b) in
   let rec mul a b =
     match a, b with
     | Int 0, _ -> Int 0
@@ -366,7 +125,7 @@ let simplify =
     | e, Int 1 -> e
     | Int 0, _ -> Int 0
     | Int 1, _ -> Int 1
-    | Int x, Int y when y > 0 -> Int (Int_ext.pow x y)
+    | Int x, Int y when y > 0 -> Int (Int.pow x y)
     | _ -> Pow (a, b)
   and div a b =
     match a, b with
@@ -382,7 +141,7 @@ let simplify =
       let all = factors 1 a @ factors (-1) b |> combine_like_terms in
       (* Separate integer and symbolic factors *)
       let ints, syms =
-        List_ext.partition_map all ~f:(function
+        List.partition_map all ~f:(function
           | Int x, exp -> `First (x, exp)
           | base, exp -> `Second (base, exp))
       in
@@ -391,7 +150,7 @@ let simplify =
         let num_coef, den_coef =
           List.fold_left
             ~f:(fun (n, d) (x, exp) ->
-              if exp > 0 then n * Int_ext.pow x exp, d else n, d * Int_ext.pow x (-exp))
+              if exp > 0 then n * Int.pow x exp, d else n, d * Int.pow x (-exp))
             (1, 1)
             ints
         in
@@ -400,7 +159,7 @@ let simplify =
       in
       (* Partition symbolic factors by sign of exponent. *)
       let num_syms, den_syms =
-        List_ext.partition_map syms ~f:(fun (base, exp) ->
+        List.partition_map syms ~f:(fun (base, exp) ->
           if exp > 0 then `First (base, exp) else `Second (base, -exp))
       in
       let product coef syms =
@@ -423,22 +182,22 @@ let simplify =
     let to_expr termlist =
       sort_by_term termlist
       |> List.map ~f:(fun (base, coef) -> mul (Int coef) base)
-      |> List_ext.reduce ~f:(fun a b -> Add (a, b))
+      |> List.reduce ~f:(fun a b -> Add (a, b))
       |> Option.value ~default:(Int 0)
     in
     let fractional_terms, other_terms =
       terms 1 a @ terms 1 b
       |> combine_like_terms
-      |> List_ext.partition_map ~f:(function
+      |> List.partition_map ~f:(function
         | Div (n, d), c -> `First (d, (n, c))
         | t -> `Second t)
     in
     (* Group fractions by denominator so x/y + z/y becomes (x+z)/y. *)
     let merged_fractional_terms =
-      List_ext.sort_and_group fractional_terms ~compare
+      List.sort_and_group fractional_terms ~compare
       |> List.map ~f:(fun (denom, nums) ->
         let numer =
-          List_ext.concat_map nums ~f:(fun (n, c) -> terms c n)
+          List.concat_map nums ~f:(fun (n, c) -> terms c n)
           |> combine_like_terms
           |> to_expr
         in
@@ -580,17 +339,17 @@ module Parser = struct
 
   let take_while f s p =
     let rec go i =
-      if i < String.length s && f (String_ext.unsafe_get s i) then go (i + 1) else i
+      if i < String.length s && f (String.unsafe_get s i) then go (i + 1) else i
     in
     go p
   ;;
 
-  let ws = take_while Char_ext.is_whitespace
+  let ws = take_while Char.is_whitespace
 
   let sat f s p =
     let p = ws s p in
-    if p < String.length s && f (String_ext.unsafe_get s p)
-    then Some (String_ext.unsafe_get s p, p + 1)
+    if p < String.length s && f (String.unsafe_get s p)
+    then Some (String.unsafe_get s p, p + 1)
     else None
   ;;
 
@@ -598,20 +357,20 @@ module Parser = struct
 
   let peek s p =
     let p = ws s p in
-    Some ((if p < String.length s then Some (String_ext.unsafe_get s p) else None), p)
+    Some ((if p < String.length s then Some (String.unsafe_get s p) else None), p)
   ;;
 
   let token f s p =
     let p = ws s p in
     let p' = take_while f s p in
-    if p' > p then Some (String_ext.sub s ~pos:p ~len:(p' - p), p') else None
+    if p' > p then Some (String.sub s ~pos:p ~len:(p' - p), p') else None
   ;;
 
-  let number = token Char_ext.is_digit >>| Int_ext.of_string
+  let number = token Char.is_digit >>| Int.of_string
 
   let keyword kw =
-    let* x = token Char_ext.is_alphanum in
-    if String_ext.equal x kw then return () else fail
+    let* x = token Char.is_alphanum in
+    if String.equal x kw then return () else fail
   ;;
 
   let parse p s =
@@ -641,8 +400,7 @@ let of_string s =
     let* a = power () in
     let* c = peek in
     match c with
-    | Some c when Char_ext.is_alpha c || Char.equal c '(' ->
-      factor () >>| fun b -> Mul (a, b)
+    | Some c when Char.is_alpha c || Char.equal c '(' -> factor () >>| fun b -> Mul (a, b)
     | _ -> return a
   and power () =
     let* base = unary () in
@@ -659,7 +417,7 @@ let of_string s =
       ; fn "ln" (fun x -> Ln x)
       ; fn "sqrt" (fun x -> Sqrt x)
       ; (number >>| fun n -> Int n)
-      ; (sat Char_ext.is_alpha >>| fun c -> Var (String.make 1 c))
+      ; (sat Char.is_alpha >>| fun c -> Var (String.make 1 c))
       ]
   in
   parse (expr ()) s
@@ -674,13 +432,13 @@ let show e =
 ;;
 
 let eval line =
-  if String_ext.equal line "q" || String_ext.equal line "quit"
+  if String.equal line "q" || String.equal line "quit"
   then false
   else (
-    (match String_ext.lsplit2 line ~on:' ' with
+    (match String.lsplit2 line ~on:' ' with
      | Some ("d", var) ->
        (match !last with
-        | Some e -> show (deriv (String_ext.strip var) e)
+        | Some e -> show (deriv (String.strip var) e)
         | None -> Io.puts "No expression.")
      | _ -> Option.iter (of_string line) ~f:show);
     true)
@@ -690,8 +448,8 @@ let () =
   Io.puts "Enter expression to simplify, or 'd <var>' for derivative.";
   let rec loop () =
     String.iter ~f:Io.putc "> ";
-    let line = String_ext.strip (Io.gets ()) in
-    let continue = String_ext.is_empty line || eval line in
+    let line = String.strip (Io.gets ()) in
+    let continue = String.is_empty line || eval line in
     if continue then loop ()
   in
   loop ()

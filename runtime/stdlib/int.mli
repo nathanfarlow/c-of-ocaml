@@ -142,3 +142,6 @@ val max : int -> int -> int
 
 (** [to_string x] is the written representation of [x] in decimal. *)
 val to_string : int -> string
+
+val pow : int -> int -> int
+val of_string : string -> int

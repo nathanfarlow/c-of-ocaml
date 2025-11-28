@@ -57,3 +57,20 @@ type t = char
 let compare c1 c2 = code c1 - code c2
 let equal (c1 : t) (c2 : t) = compare c1 c2 = 0
 let of_int n = if n < 0 || n > 255 then invalid_arg "Char.of_int" else unsafe_chr n
+
+let is_whitespace = function
+  | ' ' | '\t' | '\n' | '\r' -> true
+  | _ -> false
+;;
+
+let is_digit = function
+  | '0' .. '9' -> true
+  | _ -> false
+;;
+
+let is_alpha = function
+  | 'a' .. 'z' | 'A' .. 'Z' -> true
+  | _ -> false
+;;
+
+let is_alphanum c = is_alpha c || is_digit c

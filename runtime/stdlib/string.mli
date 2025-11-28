@@ -14,6 +14,7 @@
 (**************************************************************************)
 
 external length : string -> int = "%string_length"
+external unsafe_get : string -> int -> char = "%string_unsafe_get"
 val get : string -> int -> char
 val iter : string -> f:(char -> unit) -> unit
 
@@ -29,5 +30,12 @@ val concat : ?sep:string -> string list -> string
 
     @raise Invalid_argument if [n < 0] or [n > ]{!Sys.max_string_length}. *)
 val make : int -> char -> string
+
+val sub : string -> pos:int -> len:int -> string
+val lsplit2 : string -> on:char -> (string * string) option
+val strip : string -> string
+val is_empty : string -> bool
+val equal : string -> string -> bool
+val compare : string -> string -> int
 
 type t = string
