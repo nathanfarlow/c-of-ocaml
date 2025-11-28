@@ -15,7 +15,8 @@ typedef intptr_t natint;
 #define Val_int(x) (((value)(x) << 1) | 1)
 #define Int_val(v) ((natint)(v) >> 1)
 
-#define Tag_closure 1
+/* Use 247 to avoid conflict with OCaml variant tags (0-245) */
+#define Tag_closure 247
 #define Tag_string 252
 #define Tag_object 248
 #define Tag_no_scan 251
@@ -37,13 +38,13 @@ typedef struct {
 uchar block_gc = 0;
 block *root;
 
-#define MAX_STACK_SIZE 1024
+#define MAX_STACK_SIZE 65536
 value stack[MAX_STACK_SIZE];
 value *bp = stack;
 value *sp = stack;
 
 unatint num_bytes_allocated = 0;
-unatint max_bytes_until_gc = 680;
+unatint max_bytes_until_gc = 4096;
 
 typedef struct {
   value (*fun)(value *);
@@ -51,6 +52,14 @@ typedef struct {
   unatint total_args;
   value args[];
 } closure_t;
+
+void check_stack(const char *where) {
+  if (sp > stack + MAX_STACK_SIZE) {
+    fprintf(stderr, "Stack overflow in %s: sp=%ld, max=%d\n",
+            where, (long)(sp - stack), MAX_STACK_SIZE);
+    exit(1);
+  }
+}
 
 void mark(value p) {
   if (Is_block(p)) {
@@ -105,7 +114,6 @@ void sweep() {
 }
 
 void gc() {
-
   if (block_gc) {
     return;
   }
@@ -117,6 +125,7 @@ void gc() {
 
   sweep();
   max_bytes_until_gc = num_bytes_allocated * 2;
+  if (max_bytes_until_gc < 4096) max_bytes_until_gc = 4096;
 }
 
 block *caml_alloc_block(unatint size, uchar tag) {
@@ -164,41 +173,57 @@ void add_arg(value closure, value arg) {
   c->args[c->args_idx++] = arg;
 }
 
-value caml_call(value closure, unatint num_args, ...) {
+/* Args are pushed to global stack so GC can trace them */
+static value caml_call_with_args(value closure, unatint num_args, value *args_array) {
   closure_t *c = (closure_t *)(((block *)closure)->data);
   unatint total_provided = c->args_idx + num_args;
-  value *new_args = malloc(total_provided * sizeof(value));
 
-  memcpy(new_args, c->args, c->args_idx * sizeof(value));
-
-  va_list args;
-  va_start(args, num_args);
+  value *args_on_stack = sp;
   unatint i;
-  for (i = 0; i < num_args; i++) {
-    new_args[c->args_idx + i] = va_arg(args, value);
+  for (i = 0; i < c->args_idx; i++) {
+    *(sp++) = c->args[i];
   }
-  va_end(args);
+  for (i = 0; i < num_args; i++) {
+    *(sp++) = args_array[i];
+  }
+  check_stack("caml_call_with_args");
 
   value result;
   if (total_provided >= c->total_args) {
     value *prev_bp = bp;
     bp = sp;
-    result = c->fun(new_args);
+    result = c->fun(args_on_stack);
     sp = bp;
     bp = prev_bp;
+
     if (total_provided > c->total_args) {
       unatint excess_args = total_provided - c->total_args;
-      result = caml_call(result, excess_args, new_args + c->total_args);
+      result = caml_call_with_args(result, excess_args, args_on_stack + c->total_args);
     }
   } else {
     result = caml_alloc_closure(c->fun, c->total_args - total_provided,
                                 total_provided);
     closure_t *new_c = (closure_t *)(((block *)result)->data);
-    memcpy(new_c->args, new_args, total_provided * sizeof(value));
+    memcpy(new_c->args, args_on_stack, total_provided * sizeof(value));
+    new_c->args_idx = total_provided;
   }
 
-  free(new_args);
+  sp = args_on_stack;
   return result;
+}
+
+value caml_call(value closure, unatint num_args, ...) {
+  /* Read varargs into array first */
+  value args_array[num_args];
+  va_list args;
+  va_start(args, num_args);
+  unatint i;
+  for (i = 0; i < num_args; i++) {
+    args_array[i] = va_arg(args, value);
+  }
+  va_end(args);
+
+  return caml_call_with_args(closure, num_args, args_array);
 }
 
 value caml_copy_string(const char *s) {
@@ -211,14 +236,27 @@ value caml_copy_string(const char *s) {
 }
 
 value caml_alloc(uchar tag, natint size, ...) {
-  block *b = caml_alloc_block(size, tag);
+  /* Read varargs onto the global stack first, so GC can trace them */
+  value *saved_sp = sp;
   va_list args;
   va_start(args, size);
   natint i;
   for (i = 0; i < size; i++) {
-    b->data[i] = va_arg(args, value);
+    *(sp++) = va_arg(args, value);
   }
   va_end(args);
+  check_stack("caml_alloc");
+
+  /* Now allocate (GC may run here, but args are on our stack) */
+  block *b = caml_alloc_block(size, tag);
+
+  /* Copy from stack to block */
+  for (i = 0; i < size; i++) {
+    b->data[i] = saved_sp[i];
+  }
+
+  /* Pop args from stack */
+  sp = saved_sp;
   return (value)b;
 }
 
@@ -262,12 +300,23 @@ value caml_bytes_unsafe_set(value s, value i, value c) {
 value caml_string_of_bytes(value s) { return s; }
 
 value caml_string_concat(value s1, value s2) {
+  /* Push s1, s2 onto stack so GC can trace them during allocation */
+  value *saved_sp = sp;
+  *(sp++) = s1;
+  *(sp++) = s2;
+
   unatint len1 = Int_val(Field(s1, 0));
   unatint len2 = Int_val(Field(s2, 0));
   unatint total_len = len1 + len2;
   value new_string = caml_create_bytes(Val_int(total_len));
+
+  /* Re-read s1, s2 from stack in case they moved (they won't with our GC, but good practice) */
+  s1 = saved_sp[0];
+  s2 = saved_sp[1];
   memcpy(Str_val(new_string), Str_val(s1), len1);
   memcpy(Str_val(new_string) + len1, Str_val(s2), len2);
+
+  sp = saved_sp;
   return new_string;
 }
 

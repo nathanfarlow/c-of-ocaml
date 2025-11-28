@@ -109,15 +109,70 @@ let rec compile_closure ctx pc info =
   ]
   |> String.concat ~sep:"\n"
 
+(* Compile a single closure allocation (without filling in free vars) *)
+and compile_closure_alloc ctx stack var params pc =
+  let free_vars = Hashtbl.find_exn ctx.closures pc |> fun c -> c.free_vars in
+  let exp =
+    sprintf
+      "caml_alloc_closure(%s, %d, %d);"
+      (closure_name pc)
+      (List.length params)
+      (List.length free_vars)
+  in
+  let_ stack var exp
+
+(* Compile filling in free vars for a closure *)
+and compile_closure_fill ctx stack var pc =
+  let var_name = get stack var in
+  let free_vars = Hashtbl.find_exn ctx.closures pc |> fun c -> c.free_vars in
+  List.map free_vars ~f:(fun fv -> sprintf "add_arg(%s, %s);" var_name (get stack fv))
+  |> String.concat ~sep:"\n"
+
+(* Check if an instruction is a closure allocation *)
+and is_closure_instr (instr, _) =
+  match instr with
+  | Let (_, Closure _) -> true
+  | _ -> false
+
+(* Extract closure info from instruction *)
+and get_closure_info (instr, _) =
+  match instr with
+  | Let (var, Closure (params, (pc, _))) -> Some (var, params, pc)
+  | _ -> None
+
 and compile_block ctx visited stack pc =
   match Hash_set.mem visited pc with
   | true -> ""
   | false ->
     Hash_set.add visited pc;
     let block = Addr.Map.find pc ctx.prog.blocks in
+    (* Group consecutive closures to handle mutual recursion:
+       allocate all closures first, then fill in captured variables *)
+    let rec process_instrs acc = function
+      | [] -> List.rev acc
+      | instrs ->
+        let closures, rest = List.split_while instrs ~f:is_closure_instr in
+        if List.is_empty closures
+        then (
+          match rest with
+          | [] -> List.rev acc
+          | instr :: rest' ->
+            let compiled = compile_instr ctx stack instr in
+            process_instrs (compiled :: acc) rest')
+        else (
+          let closure_infos = List.filter_map closures ~f:get_closure_info in
+          let allocs =
+            List.map closure_infos ~f:(fun (var, params, pc) ->
+              compile_closure_alloc ctx stack var params pc)
+          in
+          let fills =
+            List.map closure_infos ~f:(fun (var, _, pc) ->
+              compile_closure_fill ctx stack var pc)
+          in
+          process_instrs (List.rev (allocs @ fills) @ acc) rest)
+    in
     let body =
-      List.map block.body ~f:(compile_instr ctx stack)
-      @ [ compile_last ctx visited stack block.branch ]
+      process_instrs [] block.body @ [ compile_last ctx visited stack block.branch ]
       |> String.concat ~sep:"\n"
     in
     sprintf "%s:;\n%s" (block_name pc) body
@@ -125,21 +180,10 @@ and compile_block ctx visited stack pc =
 and compile_instr ctx stack (instr, _) =
   match instr with
   | Let (var, Closure (params, (pc, _))) ->
-    let var_name = get stack var in
-    let free_vars = Hashtbl.find_exn ctx.closures pc |> fun c -> c.free_vars in
-    let exp =
-      sprintf
-        "caml_alloc_closure(%s, %d, %d);"
-        (closure_name pc)
-        (List.length params)
-        (List.length free_vars)
-    in
-    let assignment = let_ stack var exp in
-    let env_assignments =
-      List.map free_vars ~f:(fun fv -> sprintf "add_arg(%s, %s);" var_name (get stack fv))
-      |> String.concat ~sep:"\n"
-    in
-    sprintf "%s\n%s" assignment env_assignments
+    (* This case handles non-batched closures (shouldn't happen often) *)
+    let alloc = compile_closure_alloc ctx stack var params pc in
+    let fill = compile_closure_fill ctx stack var pc in
+    sprintf "%s\n%s" alloc fill
   | Let (var, expr) ->
     let let_ = let_ stack var (compile_expr ctx stack expr) in
     (match expr with
