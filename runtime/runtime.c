@@ -296,6 +296,13 @@ value caml_bytes_unsafe_set(value s, value i, value c) {
 
 value caml_string_of_bytes(value s) { return s; }
 
+value caml_string_notequal(value s1, value s2) {
+  unatint len1 = Int_val(Field(s1, 0));
+  unatint len2 = Int_val(Field(s2, 0));
+  if (len1 != len2) return Val_bool(1);
+  return Val_bool(memcmp(Str_val(s1), Str_val(s2), len1) != 0);
+}
+
 value caml_string_concat(value s1, value s2) {
   /* Push s1, s2 onto stack so GC can trace them during allocation */
   value *saved_sp = sp;

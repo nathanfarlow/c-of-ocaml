@@ -665,63 +665,34 @@ let of_string s =
   parse (expr ()) s
 ;;
 
-let test expr =
-  Io.puts ("Simplify: " ^ expr);
-  match of_string expr with
-  | None -> Io.puts "  Parse failed"
-  | Some e -> Io.puts ("  = " ^ to_string (simplify e))
+let last = ref None
+
+let show e =
+  let result = simplify e in
+  Io.puts (to_string result);
+  last := Some result
 ;;
 
-let test_deriv expr var =
-  Io.puts ("d/d" ^ var ^ " " ^ expr);
-  match of_string expr with
-  | None -> Io.puts "  Parse failed"
-  | Some e -> Io.puts ("  = " ^ to_string (simplify (deriv var e)))
+let eval line =
+  if String_ext.equal line "q" || String_ext.equal line "quit"
+  then false
+  else (
+    (match String_ext.lsplit2 line ~on:' ' with
+     | Some ("d", var) ->
+       (match !last with
+        | Some e -> show (deriv (String_ext.strip var) e)
+        | None -> Io.puts "No expression.")
+     | _ -> Option.iter (of_string line) ~f:show);
+    true)
 ;;
 
 let () =
-  Io.puts "=== Basic arithmetic ===";
-  test "5";
-  test "2+3";
-  test "10-4";
-  test "3*4";
-  test "8/2";
-
-  Io.puts "";
-  Io.puts "=== Variable simplification ===";
-  test "x+x";
-  test "2*x+3*x";
-  test "x*x";
-  test "x+0";
-  test "x*1";
-  test "x*0";
-
-  Io.puts "";
-  Io.puts "=== Algebraic simplification ===";
-  test "x+y+x";
-  test "(x+1)*(x+1)";
-  test "x^2+2*x+1";
-  test "2*x/2";
-  test "x^2/x";
-
-  Io.puts "";
-  Io.puts "=== Transcendental functions ===";
-  test "sin(0)";
-  test "exp(ln(x))";
-  test "ln(exp(x))";
-  test "sqrt(x)^2";
-
-  Io.puts "";
-  Io.puts "=== Derivatives ===";
-  test_deriv "x" "x";
-  test_deriv "x^2" "x";
-  test_deriv "x^3" "x";
-  test_deriv "2*x+1" "x";
-  test_deriv "x*y" "x";
-  test_deriv "sin(x)" "x";
-  test_deriv "cos(x)" "x";
-  test_deriv "exp(x)" "x";
-  test_deriv "ln(x)" "x";
-  test_deriv "x^2+2*x+1" "x";
-  test_deriv "sin(x^2)" "x"
+  Io.puts "Enter expression to simplify, or 'd <var>' for derivative.";
+  let rec loop () =
+    String.iter ~f:Io.putc "> ";
+    let line = String_ext.strip (Io.gets ()) in
+    let continue = String_ext.is_empty line || eval line in
+    if continue then loop ()
+  in
+  loop ()
 ;;
