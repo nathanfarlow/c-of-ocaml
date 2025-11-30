@@ -83,7 +83,8 @@ let rec compile_closure ctx pc info =
   let n = Hashtbl.length stack in
   [ [%string "value %{cname pc}(value* env)"]
   ; "{"
-  ; [%string "memset(bp, 1, %{n#Int} * sizeof(value)); sp += %{n#Int};"]
+  ; [%string
+      "check_stack(%{n#Int}); memset(bp, 1, %{n#Int} * sizeof(value)); sp += %{n#Int};"]
   ; List.mapi (info.free_vars @ info.params) ~f:(fun i v ->
       set ~decl:true stack v [%string "env[%{i#Int}]"])
     |> String.concat_lines
@@ -235,8 +236,9 @@ and compile_const ctx c =
     (* If multiple elements allocate, we must push each to the stack to protect from GC *)
     let n_alloc = Array.count elts ~f:const_allocates in
     let need_stack = n_alloc > 1 in
+    let check = if need_stack then [ [%string "check_stack(%{n_alloc#Int});"] ] else [] in
     let _, preambles, args =
-      Array.fold elts ~init:(0, [], []) ~f:(fun (alloc_idx, preambles, args) e ->
+      Array.fold elts ~init:(0, check, []) ~f:(fun (alloc_idx, preambles, args) e ->
         let preamble, expr = compile_const ctx e in
         if need_stack && const_allocates e
         then (
@@ -319,6 +321,8 @@ let f prog =
   ; List.map strs ~f:(fun s -> [%string "value %{sname s};"])
   ; bodies
   ; [ "int main() {" ]
+  ; (let n = List.length strs in
+     if n > 0 then [ [%string "check_stack(%{n#Int});"] ] else [])
   ; List.concat_map strs ~f:(fun s ->
       [ [%string "%{sname s} = caml_copy_string(\"%{s}\");"]
       ; [%string "*(sp++) = %{sname s};"]
