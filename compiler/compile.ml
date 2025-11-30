@@ -83,8 +83,7 @@ let rec compile_closure ctx pc info =
   let n = Hashtbl.length stack in
   [ [%string "value %{cname pc}(value* env)"]
   ; "{"
-  ; [%string
-      "check_stack(%{n#Int}); memset(bp, 1, %{n#Int} * sizeof(value)); sp += %{n#Int};"]
+  ; [%string "check_stack(%{n#Int}); sp += %{n#Int};"]
   ; List.mapi (info.free_vars @ info.params) ~f:(fun i v ->
       set ~decl:true stack v [%string "env[%{i#Int}]"])
     |> String.concat_lines
