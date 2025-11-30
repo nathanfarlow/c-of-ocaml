@@ -43,8 +43,24 @@ let rec solve board pos =
 ;;
 
 let read_board () =
-  let rec loop n acc = if n = 0 then acc else loop (n - 1) (acc ^ Io.gets ()) in
+  let rec loop n acc =
+    if n = 0
+    then acc
+    else (
+      Io.putc '>';
+      loop (n - 1) (acc ^ Io.gets ()))
+  in
   Bytes.of_string (loop 9 "")
 ;;
 
-let () = solve (read_board ()) 0
+let print_instructions () =
+  Io.puts "Sudoku Solver";
+  Io.puts "Enter 9 lines of 9 digits (use 0 for empty cells):"
+;;
+
+let () =
+  print_instructions ();
+  let board = read_board () in
+  Io.puts "Solving...";
+  solve board 0
+;;
