@@ -1,3 +1,4 @@
+#include <setjmp.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -55,6 +56,37 @@ static void check_stack(intnat n) {
   }
 }
 
+/* Exception handling */
+#define TRAP_STACK_SIZE 64
+typedef struct {
+  jmp_buf buf;
+  value *sp;
+  value *bp;
+} trap_frame;
+
+trap_frame trap_stack[TRAP_STACK_SIZE];
+trap_frame *trap_sp = trap_stack;
+value exn_value = 0;
+
+static void check_trap_stack(void) {
+  if (trap_sp >= trap_stack + TRAP_STACK_SIZE) {
+    printf("Trap stack overflow\n");
+    exit(1);
+  }
+}
+
+static void caml_raise(value exn) {
+  if (trap_sp == trap_stack) {
+    printf("Uncaught exception\n");
+    exit(2);
+  }
+  trap_sp--;
+  exn_value = exn;
+  sp = trap_sp->sp;
+  bp = trap_sp->bp;
+  longjmp(trap_sp->buf, 1);
+}
+
 /* Mark phase */
 static void mark(value v) {
   if (Is_int(v)) return;
@@ -104,6 +136,7 @@ static void compact(void) {
   /* Update roots */
   for (src = stack; src < sp; src++)
     *src = forward(*src);
+  if (exn_value) exn_value = forward(exn_value);
 
   /* Update pointers in live objects */
   for (src = heap; src < hp; ) {
@@ -140,6 +173,7 @@ static void gc(void) {
   value *p;
   for (p = stack; p < sp; p++)
     mark(*p);
+  if (exn_value) mark(exn_value);
   compact();
 }
 
@@ -324,8 +358,10 @@ value caml_int_compare(value a, value b) {
   return Val_int((x > y) - (x < y));
 }
 
-#define caml_raise(v) exit(1)
-
 value caml_exit(value code) { exit(Int_val(code)); }
 value caml_register_global(value a, value b, value c) { (void)a; (void)b; (void)c; return Val_unit; }
 value caml_ensure_stack_capacity(value n) { (void)n; return Val_unit; }
+
+/* Fresh IDs for exceptions */
+static intnat fresh_oo_id = 0;
+value caml_fresh_oo_id(value unit) { (void)unit; return Val_int(fresh_oo_id++); }

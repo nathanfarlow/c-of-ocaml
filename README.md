@@ -9,7 +9,7 @@ program running on a calculator. Its OCaml source is [here](calc/cube).
 - ✅ Garbage collector
 - ✅ Random selections of the stdlib
 - ❌ Floats
-- ❌ Exceptions
+- ✅ Exceptions
 - ❌ Objects
 
 ## Usage

@@ -68,7 +68,11 @@ let collect_vars ctx pc =
        List.iter b.params ~f:add;
        List.iter b.body ~f:(function
          | Let (v, _), _ -> add v
-         | _ -> ()))
+         | _ -> ());
+       (* Also collect exception variables from Pushtrap *)
+       match fst b.branch with
+       | Pushtrap (_, exn_var, _) -> add exn_var
+       | _ -> ())
     pc
     ctx.prog.blocks
     ();
@@ -213,7 +217,22 @@ and compile_last ctx visited stack (last, _) =
     in
     let cases_str = Array.to_list cases |> String.concat_lines in
     [%string "switch (Int_val(%{g v})) {\n%{cases_str}\n}"]
-  | Pushtrap _ | Poptrap _ -> assert false
+  | Pushtrap ((body_pc, body_args), exn_var, (handler_pc, handler_args)) ->
+    let body_branch = branch body_pc body_args in
+    let handler_branch = branch handler_pc handler_args in
+    let body_block = compile_block ctx visited stack body_pc in
+    let handler_block = compile_block ctx visited stack handler_pc in
+    [%string
+      "check_trap_stack();\n\
+       trap_sp->sp = sp; trap_sp->bp = bp;\n\
+       if (setjmp(trap_sp->buf) == 0) { trap_sp++; %{body_branch} }\n\
+       else { %{set stack exn_var \"exn_value\"} %{handler_branch} }\n\
+       %{body_block}\n\
+       %{handler_block}"]
+  | Poptrap (pc, args) ->
+    let br = branch pc args in
+    let block = compile_block ctx visited stack pc in
+    [%string "trap_sp--;\n%{br}\n%{block}"]
 
 and const_allocates = function
   | Int _ | String _ | NativeString _ -> false
