@@ -50,7 +50,7 @@ value *sp = stack;
 
 static void check_stack(intnat n) {
   if (sp + n > stack + STACK_SIZE) {
-    fprintf(stderr, "Stack overflow\n");
+    printf("Stack overflow\n");
     exit(1);
   }
 }
@@ -148,7 +148,7 @@ static value *alloc(uintnat size, uchar tag) {
   if (hp + words > heap + HEAP_SIZE) {
     gc();
     if (hp + words > heap + HEAP_SIZE) {
-      fprintf(stderr, "Out of memory\n");
+      printf("Out of memory\n");
       exit(1);
     }
   }
