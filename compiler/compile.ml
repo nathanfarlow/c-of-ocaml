@@ -145,18 +145,19 @@ and compile_instr ctx stack (instr, _) =
   match instr with
   | Let (v, Closure (p, (pc, _))) ->
     let fv = (Hashtbl.find_exn ctx.closures pc).free_vars in
-    set
-      ~decl:true
-      stack
-      v
-      [%string
-        "caml_alloc_closure(%{cname pc}, %{List.length p#Int}, %{List.length fv#Int});"]
-    ^ "\n"
-    ^ (List.map fv ~f:(fun f -> [%string "add_arg(%{g v}, %{g f});"])
-       |> String.concat_lines)
+    let alloc =
+      set
+        ~decl:true
+        stack
+        v
+        [%string
+          "caml_alloc_closure(%{cname pc}, %{List.length p#Int}, %{List.length fv#Int});"]
+    in
+    let fills = List.map fv ~f:(fun f -> [%string "add_arg(%{g v}, %{g f});"]) in
+    alloc :: fills |> String.concat_lines
   | Let (v, (Constant (Tuple _) as e)) ->
-    [%string
-      "block_gc = 1;\n%{set ~decl:true stack v (compile_expr ctx stack e)}\nblock_gc = 0;"]
+    let alloc = set ~decl:true stack v (compile_expr ctx stack e) in
+    [%string "block_gc = 1;\n%{alloc}\nblock_gc = 0;"]
   | Let (v, e) -> set ~decl:true stack v (compile_expr ctx stack e)
   | Assign (v1, v2) -> set stack v1 (g v2)
   | Set_field (v, n, x) -> [%string "Field(%{g v}, %{n#Int}) = %{g x};"]
@@ -187,20 +188,27 @@ and compile_last ctx visited stack (last, _) =
   | Raise (v, _) -> [%string "caml_raise(%{g v});"]
   | Stop -> "return Val_unit;"
   | Branch (pc, args) ->
-    [%string "%{branch pc args}\n%{compile_block ctx visited stack pc}"]
+    let br = branch pc args in
+    let block = compile_block ctx visited stack pc in
+    [%string "%{br}\n%{block}"]
   | Cond (v, (pc1, a1), (pc2, a2)) ->
+    let then_branch = branch pc1 a1 in
+    let else_branch = branch pc2 a2 in
+    let block1 = compile_block ctx visited stack pc1 in
+    let block2 = compile_block ctx visited stack pc2 in
     [%string
-      "if (Bool_val(%{g v})) { %{branch pc1 a1} } else { %{branch pc2 a2} }\n\
-       %{compile_block ctx visited stack pc1}\n\
-       %{compile_block ctx visited stack pc2}"]
+      "if (Bool_val(%{g v})) { %{then_branch} } else { %{else_branch} }\n\
+       %{block1}\n\
+       %{block2}"]
   | Switch (v, arr) ->
     let cases =
       Array.mapi arr ~f:(fun i (pc, args) ->
-        [%string
-          "case %{i#Int}: %{branch pc args}\n%{compile_block ctx visited stack pc}"])
+        let br = branch pc args in
+        let block = compile_block ctx visited stack pc in
+        [%string "case %{i#Int}: %{br}\n%{block}"])
     in
-    [%string
-      "switch (Int_val(%{g v})) {\n%{Array.to_list cases |> String.concat_lines}\n}"]
+    let cases_str = Array.to_list cases |> String.concat_lines in
+    [%string "switch (Int_val(%{g v})) {\n%{cases_str}\n}"]
   | Pushtrap _ | Poptrap _ -> assert false
 
 and compile_const ctx = function
@@ -274,7 +282,9 @@ and compile_extern name a b args arg =
      | "%caml_format_int_special" -> [%string {|caml_format_int("%%d", %{a})|}]
      | "%direct_obj_tag" -> [%string "Val_int(Tag_val(%{a}))"]
      | "caml_array_unsafe_get" -> [%string "Field(%{a}, Int_val(%{b}))"]
-     | _ -> [%string "%{name}(%{List.map args ~f:arg |> String.concat ~sep:\", \"})"])
+     | _ ->
+       let args_str = List.map args ~f:arg |> String.concat ~sep:", " in
+       [%string "%{name}(%{args_str})"])
 ;;
 
 let f prog =
