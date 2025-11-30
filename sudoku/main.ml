@@ -21,6 +21,7 @@ let conflicts board pos =
 ;;
 
 let print_board board =
+  Io.putc '\n';
   for i = 0 to 80 do
     Io.putc (get board i);
     if (i + 1) mod 9 = 0 then Io.putc '\n'
