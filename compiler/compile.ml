@@ -49,10 +49,19 @@ let assign stack var exp =
        ~f:(fun idx -> sprintf "bp[%d] = %s;" idx exp)
 ;;
 
+let rename_counter = ref 0
+
 let rename ctx stack pc args =
-  (Addr.Map.find pc ctx.prog.blocks).params
-  |> List.map2_exn ~f:(fun arg param -> assign stack param (get stack arg)) args
-  |> String.concat_lines
+  let id = !rename_counter in
+  incr rename_counter;
+  let params = (Addr.Map.find pc ctx.prog.blocks).params in
+  let temps =
+    List.mapi args ~f:(fun i arg -> sprintf "value t%d_%d = %s;" id i (get stack arg))
+  in
+  let assigns =
+    List.mapi params ~f:(fun i param -> assign stack param (sprintf "t%d_%d" id i))
+  in
+  String.concat_lines (temps @ assigns)
 ;;
 
 let get_all_vars ctx pc =
