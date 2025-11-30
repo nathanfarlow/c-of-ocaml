@@ -22,36 +22,31 @@ open Core
 open Js_of_ocaml_compiler
 
 let tailcall = Tailcall.f
-let deadcode p = Deadcode.f p |> fst
+let deadcode p = fst (Deadcode.f p)
 
 let inline p =
-  let p, live_vars = Deadcode.f p in
-  Inline.f p live_vars
+  let p, live = Deadcode.f p in
+  Inline.f p live
 ;;
 
-let specialize_1 (p, info) =
-  Specialize.f ~function_arity:(fun f -> Specialize.function_arity info f) p
-;;
-
-let specialize_js (p, info) = Specialize_js.f info p
 let flow_simple p = Flow.f ~skip_param:true p
+let flow = Flow.f
 let phi = Phisimpl.f
+let eval (p, info) = Eval.f info p
 
 let specialize' (p, info) =
-  let p = specialize_1 (p, info) in
-  let p = specialize_js (p, info) in
-  p, info
+  Specialize.f ~function_arity:(Specialize.function_arity info) p
+  |> Specialize_js.f info
+  |> fun p -> p, info
 ;;
 
 let specialize p = fst (specialize' p)
-let eval (p, info) = Eval.f info p
 let ( +> ) f g x = g (f x)
 let round1 = tailcall +> inline +> deadcode +> flow_simple +> specialize' +> eval
-let flow = Flow.f
 
-let rec loop max name round i p =
+let rec loop max round i p =
   let p' = round p in
-  if i >= max || Code.eq p' p then p' else loop max name round (i + 1) p'
+  if i >= max || Code.eq p' p then p' else loop max round (i + 1) p'
 ;;
 
 let exact_calls ~deadcode_sentinal p =
@@ -85,7 +80,7 @@ let o1 =
 ;;
 
 let round2 = flow +> specialize' +> eval +> deadcode +> o1
-let o3 = loop 10 "tailcall+inline" round1 1 +> loop 10 "flow" round2 1
+let o3 = loop 10 round1 1 +> loop 10 round2 1
 
 let f =
   let deadcode_sentinal = Code.Var.fresh_n "undef" in

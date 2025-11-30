@@ -19,48 +19,41 @@ let find_closures program =
   fold_closures program (fun _ params cont acc -> (params, cont) :: acc) []
   |> List.map ~f:(fun (params, ((pc, _) as cont)) ->
     let free_vars =
-      Addr.Map.find_opt pc free_vars
-      |> Option.map ~f:Var.Set.elements
-      |> Option.value ~default:[]
+      Addr.Map.find_opt pc free_vars |> Option.value_map ~default:[] ~f:Var.Set.elements
     in
     pc, { free_vars; params; cont })
   |> Hashtbl.of_alist_exn (module Int)
 ;;
 
 let var_name var = "v_" ^ Var.to_string var
+let closure_name pc = sprintf "c%d" pc
+let block_name pc = sprintf "b%d" pc
+let string_name s = sprintf "s_%d" (String.hash s)
+
+let get stack var =
+  Hashtbl.find stack (Var.idx var)
+  |> Option.value_map ~default:(var_name var) ~f:(sprintf "bp[%d]")
+;;
 
 let let_ stack var exp =
-  match Hashtbl.find stack (Var.idx var) with
-  | Some idx -> sprintf "bp[%d] = %s;" idx exp
-  | None -> sprintf "value %s = %s;" (var_name var) exp
+  Hashtbl.find stack (Var.idx var)
+  |> Option.value_map
+       ~default:(sprintf "value %s = %s;" (var_name var) exp)
+       ~f:(fun idx -> sprintf "bp[%d] = %s;" idx exp)
 ;;
 
 let assign stack var exp =
-  match Hashtbl.find stack (Var.idx var) with
-  | Some idx -> sprintf "bp[%d] = %s;" idx exp
-  | None -> sprintf "%s = %s;" (var_name var) exp
+  Hashtbl.find stack (Var.idx var)
+  |> Option.value_map
+       ~default:(sprintf "%s = %s;" (var_name var) exp)
+       ~f:(fun idx -> sprintf "bp[%d] = %s;" idx exp)
 ;;
 
-let get stack var =
-  match Hashtbl.find stack (Var.idx var) with
-  | Some idx -> sprintf "bp[%d]" idx
-  | None -> var_name var
-;;
-
-(** Rename continuation parameters to arguments using a sequence of statements like
-    param1 = arg1;
-    param2 = arg2;
-    ... *)
 let rename ctx stack pc args =
-  let block = Addr.Map.find pc ctx.prog.blocks in
-  List.map2_exn block.params args ~f:(fun param arg ->
-    let arg = get stack arg in
-    assign stack param arg)
+  (Addr.Map.find pc ctx.prog.blocks).params
+  |> List.map2_exn ~f:(fun arg param -> assign stack param (get stack arg)) args
   |> String.concat_lines
 ;;
-
-let closure_name pc = sprintf "c%d" pc
-let block_name pc = sprintf "b%d" pc
 
 let get_all_vars ctx pc =
   let vars = Hash_set.create (module Int) in
@@ -68,10 +61,9 @@ let get_all_vars ctx pc =
     { fold = Code.fold_children }
     (fun pc () ->
        let block = Addr.Map.find pc ctx.prog.blocks in
-       List.iter block.params ~f:(fun param -> Hash_set.add vars (Var.idx param));
-       List.iter block.body ~f:(fun (instr, _) ->
-         match instr with
-         | Let (var, _) -> Hash_set.add vars (Var.idx var)
+       List.iter block.params ~f:(fun p -> Hash_set.add vars (Var.idx p));
+       List.iter block.body ~f:(function
+         | Let (v, _), _ -> Hash_set.add vars (Var.idx v)
          | _ -> ()))
     pc
     ctx.prog.blocks
@@ -80,8 +72,6 @@ let get_all_vars ctx pc =
   |> List.mapi ~f:(fun i v -> v, i)
   |> Hashtbl.of_alist_exn (module Int)
 ;;
-
-let string_name s = sprintf "s_%d" (String.hash s)
 
 let rec compile_closure ctx pc info =
   (* env is an array of values, where the first values are the captured
@@ -109,69 +99,58 @@ let rec compile_closure ctx pc info =
   ]
   |> String.concat ~sep:"\n"
 
+and closure_free_vars ctx pc = (Hashtbl.find_exn ctx.closures pc).free_vars
+
 and compile_closure_alloc ctx stack var params pc =
-  let free_vars = Hashtbl.find_exn ctx.closures pc |> fun c -> c.free_vars in
-  let exp =
-    sprintf
-      "caml_alloc_closure(%s, %d, %d);"
-      (closure_name pc)
-      (List.length params)
-      (List.length free_vars)
-  in
-  let_ stack var exp
+  let free_vars = closure_free_vars ctx pc in
+  sprintf
+    "caml_alloc_closure(%s, %d, %d);"
+    (closure_name pc)
+    (List.length params)
+    (List.length free_vars)
+  |> let_ stack var
 
 and compile_closure_fill ctx stack var pc =
-  let var_name = get stack var in
-  let free_vars = Hashtbl.find_exn ctx.closures pc |> fun c -> c.free_vars in
-  List.map free_vars ~f:(fun fv -> sprintf "add_arg(%s, %s);" var_name (get stack fv))
+  let v = get stack var in
+  closure_free_vars ctx pc
+  |> List.map ~f:(fun fv -> sprintf "add_arg(%s, %s);" v (get stack fv))
   |> String.concat ~sep:"\n"
 
-and is_closure_instr (instr, _) =
-  match instr with
-  | Let (_, Closure _) -> true
-  | _ -> false
-
-and get_closure_info (instr, _) =
-  match instr with
-  | Let (var, Closure (params, (pc, _))) -> Some (var, params, pc)
+and get_closure_info = function
+  | Let (var, Closure (params, (pc, _))), _ -> Some (var, params, pc)
   | _ -> None
 
 and compile_block ctx visited stack pc =
-  match Hash_set.mem visited pc with
-  | true -> ""
-  | false ->
+  if Hash_set.mem visited pc
+  then ""
+  else (
     Hash_set.add visited pc;
     let block = Addr.Map.find pc ctx.prog.blocks in
-    (* Group consecutive closures to handle mutual recursion:
-       allocate all closures first, then fill in captured variables *)
-    let rec process_instrs acc = function
+    let rec process acc = function
       | [] -> List.rev acc
       | instrs ->
-        let closures, rest = List.split_while instrs ~f:is_closure_instr in
-        if List.is_empty closures
-        then (
-          match rest with
-          | [] -> List.rev acc
-          | instr :: rest' ->
-            let compiled = compile_instr ctx stack instr in
-            process_instrs (compiled :: acc) rest')
-        else (
-          let closure_infos = List.filter_map closures ~f:get_closure_info in
-          let allocs =
-            List.map closure_infos ~f:(fun (var, params, pc) ->
-              compile_closure_alloc ctx stack var params pc)
-          in
-          let fills =
-            List.map closure_infos ~f:(fun (var, _, pc) ->
-              compile_closure_fill ctx stack var pc)
-          in
-          process_instrs (List.rev (allocs @ fills) @ acc) rest)
+        let closures, rest =
+          List.split_while instrs ~f:(fun i -> Option.is_some (get_closure_info i))
+        in
+        (match List.filter_map closures ~f:get_closure_info with
+         | [] ->
+           (match rest with
+            | [] -> List.rev acc
+            | i :: rest' -> process (compile_instr ctx stack i :: acc) rest')
+         | infos ->
+           let allocs =
+             List.map infos ~f:(fun (v, p, pc) -> compile_closure_alloc ctx stack v p pc)
+           in
+           let fills =
+             List.map infos ~f:(fun (v, _, pc) -> compile_closure_fill ctx stack v pc)
+           in
+           process (List.rev_append (allocs @ fills) acc) rest)
     in
-    let body =
-      process_instrs [] block.body @ [ compile_last ctx visited stack block.branch ]
-      |> String.concat ~sep:"\n"
-    in
-    sprintf "%s:;\n%s" (block_name pc) body
+    sprintf
+      "%s:;\n%s"
+      (block_name pc)
+      (process [] block.body @ [ compile_last ctx visited stack block.branch ]
+       |> String.concat ~sep:"\n"))
 
 and compile_instr ctx stack (instr, _) =
   match instr with
@@ -255,34 +234,27 @@ and compile_last ctx visited stack (last, _) =
   | Pushtrap _ -> assert false
   | Poptrap _ -> assert false
 
-and compile_constant ctx c =
-  match c with
+and add_string ctx s =
+  Hash_set.add ctx.strings s;
+  string_name s
+
+and compile_constant ctx = function
   | Int i -> sprintf "Val_int(%ld)" i
   | Float f -> sprintf "caml_copy_double(%f)" f
-  | String s ->
-    Hash_set.add ctx.strings s;
-    string_name s
-  | NativeString ns ->
-    (match ns with
-     | Byte s ->
-       Hash_set.add ctx.strings s;
-       string_name s
-     | Utf (Utf8 s) ->
-       Hash_set.add ctx.strings s;
-       string_name s)
+  | String s -> add_string ctx s
+  | NativeString (Byte s | Utf (Utf8 s)) -> add_string ctx s
   | Int64 i -> sprintf "caml_copy_int64(%Ld)" i
   | Float_array fa ->
-    let elements =
-      Array.to_list fa |> List.map ~f:(sprintf "%f") |> String.concat ~sep:", "
-    in
-    sprintf "caml_alloc_float_array(%d, (double[]){%s})" (Array.length fa) elements
-  | Tuple (tag, elements, _) ->
-    let elements_str =
-      Array.to_list elements
-      |> List.map ~f:(compile_constant ctx)
-      |> String.concat ~sep:", "
-    in
-    sprintf "caml_alloc(%d, %d, %s)" tag (Array.length elements) elements_str
+    sprintf
+      "caml_alloc_float_array(%d, (double[]){%s})"
+      (Array.length fa)
+      (Array.to_list fa |> List.map ~f:(sprintf "%f") |> String.concat ~sep:", ")
+  | Tuple (tag, elts, _) ->
+    sprintf
+      "caml_alloc(%d, %d, %s)"
+      tag
+      (Array.length elts)
+      (Array.to_list elts |> List.map ~f:(compile_constant ctx) |> String.concat ~sep:", ")
 
 and compile_prim ctx stack prim args =
   match prim, args with
@@ -323,49 +295,37 @@ and compile_prim ctx stack prim args =
       (compile_prim_arg ctx stack y)
   | _ -> sprintf "/* Unhandled primitive :O */"
 
+and int_binops =
+  [ "%int_add", "+"
+  ; "%int_sub", "-"
+  ; "%int_mul", "*"
+  ; "%int_div", "/"
+  ; "%int_mod", "%"
+  ; "%direct_int_mul", "*"
+  ; "%direct_int_div", "/"
+  ; "%direct_int_mod", "%"
+  ; "%int_and", "&"
+  ; "%int_or", "|"
+  ; "%int_xor", "^"
+  ; "%int_lsl", "<<"
+  ; "%int_asr", ">>"
+  ]
+
 and compile_extern ctx stack name args =
-  (* Helper function for binary operators *)
-  let bin_op op a b =
-    sprintf
-      "Val_int(Int_val(%s) %s Int_val(%s))"
-      (compile_prim_arg ctx stack a)
-      op
-      (compile_prim_arg ctx stack b)
-  in
-  match name, args with
-  | "%int_add", [ a; b ] -> bin_op "+" a b
-  | "%int_sub", [ a; b ] -> bin_op "-" a b
-  | "%int_mul", [ a; b ] -> bin_op "*" a b
-  | "%int_div", [ a; b ] -> bin_op "/" a b
-  | "%int_mod", [ a; b ] -> bin_op "%" a b
-  | "%direct_int_mul", [ a; b ] -> bin_op "*" a b
-  | "%direct_int_div", [ a; b ] -> bin_op "/" a b
-  | "%direct_int_mod", [ a; b ] -> bin_op "%" a b
-  | "%int_and", [ a; b ] -> bin_op "&" a b
-  | "%int_or", [ a; b ] -> bin_op "|" a b
-  | "%int_xor", [ a; b ] -> bin_op "^" a b
-  | "%int_lsl", [ a; b ] -> bin_op "<<" a b
-  | "%int_asr", [ a; b ] -> bin_op ">>" a b
-  | "%int_lsr", [ a; b ] ->
-    sprintf
-      "Val_int((unatint)Int_val(%s) >> Int_val(%s))"
-      (compile_prim_arg ctx stack a)
-      (compile_prim_arg ctx stack b)
-  | "%int_neg", [ a ] -> sprintf "Val_int(-Int_val(%s))" (compile_prim_arg ctx stack a)
-  | "%caml_format_int_special", [ a ] ->
-    sprintf "caml_format_int(\"%s\", %s)" "%d" (compile_prim_arg ctx stack a)
-  | "%direct_obj_tag", [ a ] ->
-    sprintf "Val_int(Tag_val(%s))" (compile_prim_arg ctx stack a)
-  | "caml_array_unsafe_get", [ arr; idx ] ->
-    sprintf
-      "Field(%s, Int_val(%s))"
-      (compile_prim_arg ctx stack arr)
-      (compile_prim_arg ctx stack idx)
-  | _ ->
-    let args_str =
-      List.map args ~f:(compile_prim_arg ctx stack) |> String.concat ~sep:", "
-    in
-    sprintf "%s(%s)" name args_str
+  let arg = compile_prim_arg ctx stack in
+  match List.Assoc.find int_binops ~equal:String.equal name, args with
+  | Some op, [ a; b ] -> sprintf "Val_int(Int_val(%s) %s Int_val(%s))" (arg a) op (arg b)
+  | None, _ ->
+    (match name, args with
+     | "%int_lsr", [ a; b ] ->
+       sprintf "Val_int((unatint)Int_val(%s) >> Int_val(%s))" (arg a) (arg b)
+     | "%int_neg", [ a ] -> sprintf "Val_int(-Int_val(%s))" (arg a)
+     | "%caml_format_int_special", [ a ] -> sprintf "caml_format_int(\"%%d\", %s)" (arg a)
+     | "%direct_obj_tag", [ a ] -> sprintf "Val_int(Tag_val(%s))" (arg a)
+     | "caml_array_unsafe_get", [ arr; idx ] ->
+       sprintf "Field(%s, Int_val(%s))" (arg arr) (arg idx)
+     | _ -> sprintf "%s(%s)" name (List.map args ~f:arg |> String.concat ~sep:", "))
+  | Some _, _ -> assert false
 
 and compile_prim_arg ctx stack = function
   | Pv var -> get stack var
