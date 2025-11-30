@@ -64,13 +64,13 @@ value *sp = stack;
 static uintnat num_bytes_allocated = 0;
 static uintnat max_bytes_until_gc = MIN_HEAP_SIZE;
 
-#define check_stack(n) do { \
-  if (sp + (n) > stack + MAX_STACK_SIZE) { \
-    fprintf(stderr, "Stack overflow: need %d, have %ld\n", \
-            (int)(n), (long)(stack + MAX_STACK_SIZE - sp)); \
-    exit(1); \
-  } \
-} while(0)
+static void check_stack(intnat n) {
+  if (sp + n > stack + MAX_STACK_SIZE) {
+    fprintf(stderr, "Stack overflow: need %ld, have %ld\n",
+            (long)n, (long)(stack + MAX_STACK_SIZE - sp));
+    exit(1);
+  }
+}
 
 static void mark(value p) {
   if (Is_int(p))
@@ -171,22 +171,14 @@ static block *caml_alloc_block(uintnat size, uchar tag) {
 }
 
 value caml_alloc(uchar tag, intnat size, ...) {
-  check_stack(size);
-  value *saved_sp = sp;
+  block *b = caml_alloc_block(size, tag);
   va_list args;
   va_start(args, size);
   intnat i;
   for (i = 0; i < size; i++) {
-    *(sp++) = va_arg(args, value);
+    b->data[i] = va_arg(args, value);
   }
   va_end(args);
-
-  block *b = caml_alloc_block(size, tag);
-  for (i = 0; i < size; i++) {
-    b->data[i] = saved_sp[i];
-  }
-
-  sp = saved_sp;
   return (value)b;
 }
 
@@ -320,21 +312,11 @@ value caml_string_notequal(value s1, value s2) {
 }
 
 value caml_string_concat(value s1, value s2) {
-  check_stack(2);
-  value *saved_sp = sp;
-  *(sp++) = s1;
-  *(sp++) = s2;
-
   uintnat len1 = Int_val(Field(s1, 0));
   uintnat len2 = Int_val(Field(s2, 0));
   value result = caml_create_bytes(Val_int(len1 + len2));
-
-  s1 = saved_sp[0];
-  s2 = saved_sp[1];
   memcpy(Str_val(result), Str_val(s1), len1);
   memcpy(Str_val(result) + len1, Str_val(s2), len2);
-
-  sp = saved_sp;
   return result;
 }
 

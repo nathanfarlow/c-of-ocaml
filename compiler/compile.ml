@@ -233,26 +233,13 @@ and compile_const ctx c =
     in
     [], [%string "caml_alloc_float_array(%{Array.length fa#Int}, (double[]){%{elts}})"]
   | Tuple (tag, elts, _) ->
-    (* If multiple elements allocate, we must push each to the stack to protect from GC *)
-    let n_alloc = Array.count elts ~f:const_allocates in
-    let need_stack = n_alloc > 1 in
-    let check = if need_stack then [ [%string "check_stack(%{n_alloc#Int});"] ] else [] in
-    let _, preambles, args =
-      Array.fold elts ~init:(0, check, []) ~f:(fun (alloc_idx, preambles, args) e ->
+    let preambles, args =
+      Array.fold elts ~init:([], []) ~f:(fun (preambles, args) e ->
         let preamble, expr = compile_const ctx e in
-        if need_stack && const_allocates e
-        then (
-          let push = [ [%string "sp[0] = %{expr};"]; "sp++;" ] in
-          ( alloc_idx + 1
-          , preambles @ preamble @ push
-          , args @ [ [%string "sp[%{alloc_idx#Int}]"] ] ))
-        else alloc_idx, preambles @ preamble, args @ [ expr ])
-    in
-    let preamble =
-      if need_stack then preambles @ [ [%string "sp -= %{n_alloc#Int};"] ] else preambles
+        preambles @ preamble, args @ [ expr ])
     in
     let args_str = String.concat args ~sep:", " in
-    preamble, [%string "caml_alloc(%{tag#Int}, %{Array.length elts#Int}, %{args_str})"]
+    preambles, [%string "caml_alloc(%{tag#Int}, %{Array.length elts#Int}, %{args_str})"]
 
 and compile_prim ctx stack prim args =
   let arg = function
