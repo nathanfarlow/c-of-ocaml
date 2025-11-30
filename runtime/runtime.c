@@ -35,7 +35,6 @@ typedef struct {
   value data[];
 } block;
 
-uchar block_gc = 0;
 block *root;
 
 #define MAX_STACK_SIZE (1024 * 16)
@@ -114,10 +113,6 @@ void sweep() {
 }
 
 void gc() {
-  if (block_gc) {
-    return;
-  }
-
   value *p;
   for (p = stack; p < sp; p++) {
     mark(*p);

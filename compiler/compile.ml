@@ -155,9 +155,9 @@ and compile_instr ctx stack (instr, _) =
     in
     let fills = List.map fv ~f:(fun f -> [%string "add_arg(%{g v}, %{g f});"]) in
     alloc :: fills |> String.concat_lines
-  | Let (v, (Constant (Tuple _) as e)) ->
-    let alloc = set ~decl:true stack v (compile_expr ctx stack e) in
-    [%string "block_gc = 1;\n%{alloc}\nblock_gc = 0;"]
+  | Let (v, Constant c) ->
+    let preamble, expr = compile_const ctx c in
+    String.concat_lines (preamble @ [ set ~decl:true stack v expr ])
   | Let (v, e) -> set ~decl:true stack v (compile_expr ctx stack e)
   | Assign (v1, v2) -> set stack v1 (g v2)
   | Set_field (v, n, x) -> [%string "Field(%{g v}, %{n#Int}) = %{g x};"]
@@ -174,7 +174,7 @@ and compile_expr ctx stack = function
     in
     [%string "caml_alloc(%{tag#Int}, %{Array.length fields#Int}, %{fs})"]
   | Field (v, n) -> [%string "Field(%{get stack v}, %{n#Int})"]
-  | Constant c -> compile_const ctx c
+  | Constant c -> snd (compile_const ctx c)
   | Prim (p, args) -> compile_prim ctx stack p args
   | Closure _ -> assert false
   | Special Undefined -> "Val_unit"
@@ -211,30 +211,51 @@ and compile_last ctx visited stack (last, _) =
     [%string "switch (Int_val(%{g v})) {\n%{cases_str}\n}"]
   | Pushtrap _ | Poptrap _ -> assert false
 
-and compile_const ctx = function
-  | Int i -> [%string "Val_int(%{i#Int32}L)"]
-  | Float f -> [%string "caml_copy_double(%{f#Float})"]
+and const_allocates = function
+  | Int _ | String _ | NativeString _ -> false
+  | Float _ | Int64 _ | Float_array _ | Tuple _ -> true
+
+(* Returns (preamble_statements, expression) *)
+and compile_const ctx c =
+  match c with
+  | Int i -> [], [%string "Val_int(%{i#Int32}L)"]
+  | Float f -> [], [%string "caml_copy_double(%{f#Float})"]
   | String s | NativeString (Byte s | Utf (Utf8 s)) ->
     Hash_set.add ctx.strings s;
-    sname s
-  | Int64 i -> [%string "caml_copy_int64(%{i#Int64}LL)"]
+    [], sname s
+  | Int64 i -> [], [%string "caml_copy_int64(%{i#Int64}LL)"]
   | Float_array fa ->
     let elts =
       Array.map fa ~f:(fun f -> [%string "%{f#Float}"])
       |> Array.to_list
       |> String.concat ~sep:", "
     in
-    [%string "caml_alloc_float_array(%{Array.length fa#Int}, (double[]){%{elts}})"]
+    [], [%string "caml_alloc_float_array(%{Array.length fa#Int}, (double[]){%{elts}})"]
   | Tuple (tag, elts, _) ->
-    let es =
-      Array.map elts ~f:(compile_const ctx) |> Array.to_list |> String.concat ~sep:", "
+    (* If multiple elements allocate, we must push each to the stack to protect from GC *)
+    let n_alloc = Array.count elts ~f:const_allocates in
+    let need_stack = n_alloc > 1 in
+    let _, preambles, args =
+      Array.fold elts ~init:(0, [], []) ~f:(fun (alloc_idx, preambles, args) e ->
+        let preamble, expr = compile_const ctx e in
+        if need_stack && const_allocates e
+        then (
+          let push = [ [%string "sp[0] = %{expr};"]; "sp++;" ] in
+          ( alloc_idx + 1
+          , preambles @ preamble @ push
+          , args @ [ [%string "sp[%{alloc_idx#Int}]"] ] ))
+        else alloc_idx, preambles @ preamble, args @ [ expr ])
     in
-    [%string "caml_alloc(%{tag#Int}, %{Array.length elts#Int}, %{es})"]
+    let preamble =
+      if need_stack then preambles @ [ [%string "sp -= %{n_alloc#Int};"] ] else preambles
+    in
+    let args_str = String.concat args ~sep:", " in
+    preamble, [%string "caml_alloc(%{tag#Int}, %{Array.length elts#Int}, %{args_str})"]
 
 and compile_prim ctx stack prim args =
   let arg = function
     | Pv v -> get stack v
-    | Pc c -> compile_const ctx c
+    | Pc c -> snd (compile_const ctx c)
   in
   let a, b =
     match args with

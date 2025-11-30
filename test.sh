@@ -2,7 +2,7 @@
 set -e
 
 echo "=== Building programs ==="
-dune build examples/fib/main.c.exe examples/cas/main.c.exe examples/sudoku/main.c.exe
+dune build examples/fib/main.c.exe examples/cas/main.c.exe examples/sudoku/main.c.exe examples/tuple_test/main.c.exe
 
 echo ""
 echo "=== Running fib ==="
@@ -28,6 +28,10 @@ printf "x^6\nD x\nD x\nD x\nD x\nD x\nD x\nD x\nQ\n" | ./_build/default/examples
 echo ""
 echo "=== Running Sudoku ==="
 printf "530070000\n600195000\n098000060\n800060003\n400803001\n700020006\n060000280\n000419005\n000080079\n" | ./_build/default/examples/sudoku/main.c.exe
+
+echo ""
+echo "=== Running Tuple Test ==="
+./_build/default/examples/tuple_test/main.c.exe
 
 echo ""
 echo "=== All tests passed ==="
