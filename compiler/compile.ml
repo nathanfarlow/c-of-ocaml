@@ -83,15 +83,15 @@ let collect_vars ctx pc =
 
 let rec compile_closure ctx pc info =
   let stack = collect_vars ctx pc in
-  (* Ensure free_vars have stack slots (they may not be in collect_vars result) *)
-  List.iter info.free_vars ~f:(fun v ->
+  (* Ensure free_vars and params have stack slots so GC can update them *)
+  List.iter (info.free_vars @ info.params) ~f:(fun v ->
     if not (Hashtbl.mem stack (Var.idx v))
     then Hashtbl.set stack ~key:(Var.idx v) ~data:(Hashtbl.length stack));
   let visited = Hash_set.create (module Int) in
   let n = Hashtbl.length stack in
   [ [%string "value %{cname pc}(value* env)"]
   ; "{"
-  ; [%string "check_stack(%{n#Int}); sp += %{n#Int};"]
+  ; [%string "reserve_stack(%{n#Int});"]
   ; List.mapi (info.free_vars @ info.params) ~f:(fun i v ->
       set ~decl:true stack v [%string "env[%{i#Int}]"])
     |> String.concat_lines

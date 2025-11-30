@@ -5,10 +5,18 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* Memory configuration */
+#define HEAP_SIZE_BYTES (8 * 1024 * 1024)
+#define STACK_SIZE_BYTES (128 * 1024)
+#define TRAP_STACK_SIZE 64
+
 typedef uintptr_t value;
 typedef uintptr_t uintnat;
 typedef intptr_t intnat;
 typedef unsigned char uchar;
+
+#define HEAP_SIZE (HEAP_SIZE_BYTES / sizeof(value))
+#define STACK_SIZE (STACK_SIZE_BYTES / sizeof(value))
 
 #define Is_int(v) (((v) & 1) != 0)
 #define Is_block(v) (((v) & 1) == 0)
@@ -25,7 +33,7 @@ typedef unsigned char uchar;
 #define Tag_no_scan 251
 #define Tag_string 252
 
-/* Block header: tag (8 bits) | mark (1 bit) | size (55 bits) */
+/* Block header: tag (8 bits) | mark (1 bit) | size (remaining bits) */
 #define Make_header(sz, tag) ((uintnat)(tag) | ((uintnat)(sz) << 9))
 #define Header_tag(h) ((h) & 0xFF)
 #define Header_size(h) ((h) >> 9)
@@ -38,26 +46,29 @@ typedef unsigned char uchar;
 #define Tag_val(v) Header_tag(Header(v))
 #define Size_val(v) Header_size(Header(v))
 
-/* Heap: fixed-size bump allocator */
-#define HEAP_SIZE (1024 * 1024)
+/* Heap */
 static value heap[HEAP_SIZE];
 static value *hp = heap;
 
 /* Stack */
-#define STACK_SIZE (1024 * 16)
 static value stack[STACK_SIZE];
 value *bp = stack;
 value *sp = stack;
 
 static void check_stack(intnat n) {
   if (sp + n > stack + STACK_SIZE) {
-    printf("Stack overflow\n");
+    printf("Stack overflow (%lu bytes)\n", (unsigned long)STACK_SIZE_BYTES);
     exit(1);
   }
 }
 
+void reserve_stack(intnat n) {
+  check_stack(n);
+  memset(sp, 1, n * sizeof(value)); /* 1 looks like int to GC */
+  sp += n;
+}
+
 /* Exception handling */
-#define TRAP_STACK_SIZE 64
 typedef struct {
   jmp_buf buf;
   value *sp;
@@ -87,123 +98,7 @@ static void caml_raise(value exn) {
   longjmp(trap_sp->buf, 1);
 }
 
-/* Mark phase */
-static void mark(value v) {
-  if (Is_int(v)) return;
-
-  value *p = (value *)v;
-  if (p < heap || p >= hp) return;
-
-  uintnat h = *p;
-  if (Header_marked(h)) return;
-
-  Header(v) = Header_set_mark(h);
-  uintnat size = Header_size(h);
-  uchar tag = Header_tag(h);
-
-  if (tag < Tag_no_scan) {
-    uintnat i;
-    for (i = 0; i < size; i++)
-      mark(Field(v, i));
-  }
-}
-
-/* Compute where an object will move to after compaction */
-static value *forward_addr(value *obj) {
-  value *dst = heap;
-  value *src = heap;
-  while (src < obj) {
-    uintnat h = *src;
-    uintnat size = Header_size(h);
-    if (Header_marked(h))
-      dst += 1 + size;
-    src += 1 + size;
-  }
-  return dst;
-}
-
-/* Update a single pointer */
-static value forward(value v) {
-  if (Is_int(v)) return v;
-  return (value)forward_addr((value *)v);
-}
-
-/* Compact phase: update pointers then slide objects */
-static void compact(void) {
-  value *src, *dst;
-  uintnat i;
-
-  /* Update roots */
-  for (src = stack; src < sp; src++)
-    *src = forward(*src);
-  if (exn_value) exn_value = forward(exn_value);
-
-  /* Update pointers in live objects */
-  for (src = heap; src < hp; ) {
-    uintnat h = *src;
-    uintnat size = Header_size(h);
-    if (Header_marked(h)) {
-      uchar tag = Header_tag(h);
-      if (tag < Tag_no_scan) {
-        for (i = 0; i < size; i++)
-          src[1 + i] = forward(src[1 + i]);
-      }
-    }
-    src += 1 + size;
-  }
-
-  /* Slide objects down */
-  dst = heap;
-  for (src = heap; src < hp; ) {
-    uintnat h = *src;
-    uintnat size = Header_size(h);
-    if (Header_marked(h)) {
-      uintnat words = 1 + size;
-      if (dst != src)
-        memmove(dst, src, words * sizeof(value));
-      *dst = Header_clear_mark(h);
-      dst += words;
-    }
-    src += 1 + size;
-  }
-  hp = dst;
-}
-
-static void gc(void) {
-  value *p;
-  for (p = stack; p < sp; p++)
-    mark(*p);
-  if (exn_value) mark(exn_value);
-  compact();
-}
-
-static value *alloc(uintnat size, uchar tag) {
-  uintnat words = 1 + size;
-  if (hp + words > heap + HEAP_SIZE) {
-    gc();
-    if (hp + words > heap + HEAP_SIZE) {
-      printf("Out of memory\n");
-      exit(1);
-    }
-  }
-  value *block = hp;
-  hp += words;
-  *block = Make_header(size, tag);
-  return block;
-}
-
-value caml_alloc(uchar tag, intnat size, ...) {
-  value *block = alloc(size, tag);
-  va_list args;
-  va_start(args, size);
-  intnat i;
-  for (i = 0; i < size; i++)
-    block[1 + i] = va_arg(args, value);
-  va_end(args);
-  return (value)block;
-}
-
-/* Closures */
+/* Closures - declared early for GC */
 typedef struct {
   value (*fun)(value *);
   uintnat args_idx;
@@ -213,10 +108,147 @@ typedef struct {
 
 #define Closure_data(v) ((closure_t *)&Field(v, 0))
 
+static void mark(value v) {
+  value *p;
+  uintnat h, size, i;
+  uchar tag;
+  closure_t *c;
+  if (Is_int(v)) return;
+  p = (value *)v;
+  if (p < heap || p >= hp) return;
+  h = *p;
+  if (Header_marked(h)) return;
+  *p = Header_set_mark(h);
+  size = Header_size(h);
+  tag = Header_tag(h);
+  if (tag == Tag_closure) {
+    c = Closure_data(v);
+    for (i = 0; i < c->args_idx; i++)
+      mark(c->args[i]);
+  } else if (tag < Tag_no_scan) {
+    for (i = 0; i < size; i++)
+      mark(Field(v, i));
+  }
+}
+
+static value forward(value v) {
+  value *p, *src, *dst;
+  uintnat h, size;
+  if (Is_int(v)) return v;
+  p = (value *)v;
+  if (p < heap || p >= hp) return v;
+  dst = heap;
+  for (src = heap; src < p; ) {
+    h = *src;
+    size = Header_size(h);
+    if (Header_marked(h))
+      dst += 1 + size;
+    src += 1 + size;
+  }
+  return (value)dst;
+}
+
+static void compact(void) {
+  value *src, *dst;
+  uintnat h, size, words, i;
+  uchar tag;
+  closure_t *c;
+
+  /* Phase 1: Update roots */
+  for (src = stack; src < sp; src++)
+    *src = forward(*src);
+  if (exn_value)
+    exn_value = forward(exn_value);
+
+  /* Phase 2: Update pointers in live objects */
+  for (src = heap; src < hp;) {
+    h = *src;
+    size = Header_size(h);
+    if (Header_marked(h)) {
+      tag = Header_tag(h);
+      if (tag == Tag_closure) {
+        c = (closure_t *)&src[1];
+        for (i = 0; i < c->args_idx; i++)
+          c->args[i] = forward(c->args[i]);
+      } else if (tag < Tag_no_scan) {
+        for (i = 0; i < size; i++)
+          src[1 + i] = forward(src[1 + i]);
+      }
+    }
+    src += 1 + size;
+  }
+
+  /* Phase 3: Slide objects down */
+  dst = heap;
+  for (src = heap; src < hp;) {
+    h = *src;
+    size = Header_size(h);
+    words = 1 + size;
+    if (Header_marked(h)) {
+      if (dst != src)
+        memmove(dst, src, words * sizeof(value));
+      *dst = Header_clear_mark(h);
+      dst += words;
+    }
+    src += words;
+  }
+  hp = dst;
+}
+
+static void gc(void) {
+  value *p;
+  for (p = stack; p < sp; p++)
+    mark(*p);
+  if (exn_value)
+    mark(exn_value);
+  compact();
+}
+
+static value *alloc(uintnat size, uchar tag) {
+  uintnat words = 1 + size;
+  value *block;
+  if (hp + words > heap + HEAP_SIZE) {
+    gc();
+    if (hp + words > heap + HEAP_SIZE) {
+      printf("Out of heap memory (%lu bytes)\n", (unsigned long)HEAP_SIZE_BYTES);
+      exit(1);
+    }
+  }
+  block = hp;
+  hp += words;
+  *block = Make_header(size, tag);
+  memset(block + 1, 1, size * sizeof(value)); /* 1 looks like int to GC */
+  return block;
+}
+
+value caml_alloc(uchar tag, intnat size, ...) {
+  va_list args;
+  value *saved_sp = sp;
+  value *block;
+  intnat i;
+
+  /* Push args to stack as GC roots */
+  va_start(args, size);
+  check_stack(size);
+  for (i = 0; i < size; i++)
+    *(sp++) = va_arg(args, value);
+  va_end(args);
+
+  block = alloc(size, tag);
+
+  for (i = 0; i < size; i++)
+    block[1 + i] = saved_sp[i];
+  sp = saved_sp;
+
+  return (value)block;
+}
+
 value caml_alloc_closure(value (*fun)(value *), uintnat num_args, uintnat num_env) {
   uintnat data_size = (sizeof(closure_t) + (num_args + num_env) * sizeof(value) + sizeof(value) - 1) / sizeof(value);
-  value *block = alloc(data_size, Tag_closure);
-  closure_t *c = (closure_t *)&block[1];
+  value *block;
+  closure_t *c;
+  block = alloc(data_size, Tag_closure);
+  c = (closure_t *)&block[1];
   c->fun = fun;
   c->args_idx = 0;
   c->total_args = num_args + num_env;
@@ -230,31 +262,38 @@ void add_arg(value closure, value arg) {
 
 static value caml_call_with_args(value closure, uintnat num_args, value *args_array) {
   closure_t *c = Closure_data(closure);
-  uintnat total_provided = c->args_idx + num_args;
+  closure_t *new_c;
+  /* Cache before potential GC */
+  value (*fun)(value *) = c->fun;
+  uintnat closure_args_idx = c->args_idx;
+  uintnat total_args = c->total_args;
+  uintnat total_provided = closure_args_idx + num_args;
+  uintnat i, excess;
+  value *args_on_stack, *prev_bp;
+  value result;
+
   check_stack(total_provided);
 
-  value *args_on_stack = sp;
-  uintnat i;
-  for (i = 0; i < c->args_idx; i++)
+  args_on_stack = sp;
+  for (i = 0; i < closure_args_idx; i++)
     *(sp++) = c->args[i];
   for (i = 0; i < num_args; i++)
     *(sp++) = args_array[i];
 
-  value result;
-  if (total_provided >= c->total_args) {
-    value *prev_bp = bp;
+  if (total_provided >= total_args) {
+    prev_bp = bp;
     bp = sp;
-    result = c->fun(args_on_stack);
+    result = fun(args_on_stack);
     sp = bp;
     bp = prev_bp;
 
-    if (total_provided > c->total_args) {
-      uintnat excess = total_provided - c->total_args;
-      result = caml_call_with_args(result, excess, args_on_stack + c->total_args);
+    if (total_provided > total_args) {
+      excess = total_provided - total_args;
+      result = caml_call_with_args(result, excess, args_on_stack + total_args);
     }
   } else {
-    result = caml_alloc_closure(c->fun, c->total_args - total_provided, total_provided);
-    closure_t *new_c = Closure_data(result);
+    result = caml_alloc_closure(fun, total_args - total_provided, total_provided);
+    new_c = Closure_data(result);
     memcpy(new_c->args, args_on_stack, total_provided * sizeof(value));
     new_c->args_idx = total_provided;
   }
@@ -264,14 +303,20 @@ static value caml_call_with_args(value closure, uintnat num_args, value *args_ar
 }
 
 value caml_call(value closure, uintnat num_args, ...) {
-  value args_array[num_args];
   va_list args;
-  va_start(args, num_args);
   uintnat i;
+  value *args_on_stack = sp;
+  value result;
+
+  check_stack(num_args);
+  va_start(args, num_args);
   for (i = 0; i < num_args; i++)
-    args_array[i] = va_arg(args, value);
+    *(sp++) = va_arg(args, value);
   va_end(args);
-  return caml_call_with_args(closure, num_args, args_array);
+
+  result = caml_call_with_args(closure, num_args, args_on_stack);
+  sp = args_on_stack;
+  return result;
 }
 
 /* Strings */
@@ -362,6 +407,5 @@ value caml_exit(value code) { exit(Int_val(code)); }
 value caml_register_global(value a, value b, value c) { (void)a; (void)b; (void)c; return Val_unit; }
 value caml_ensure_stack_capacity(value n) { (void)n; return Val_unit; }
 
-/* Fresh IDs for exceptions */
 static intnat fresh_oo_id = 0;
 value caml_fresh_oo_id(value unit) { (void)unit; return Val_int(fresh_oo_id++); }
