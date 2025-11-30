@@ -2,7 +2,7 @@
 set -e
 
 echo "=== Building programs ==="
-dune build examples/fib/main.c.exe examples/cas/main.c.exe examples/sudoku/main.c.exe examples/tuple_test/main.c.exe
+dune build examples/fib/main.c.exe examples/cas/main.c.exe examples/sudoku/main.c.exe examples/tuple_test/main.c.exe examples/gc_stress/main.c.exe
 
 echo ""
 echo "=== Running fib ==="
@@ -32,6 +32,10 @@ printf "530070000\n600195000\n098000060\n800060003\n400803001\n700020006\n060000
 echo ""
 echo "=== Running Tuple Test ==="
 ./_build/default/examples/tuple_test/main.c.exe
+
+echo ""
+echo "=== Running GC Stress Test ==="
+./_build/default/examples/gc_stress/main.c.exe
 
 echo ""
 echo "=== All tests passed ==="

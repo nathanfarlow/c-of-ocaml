@@ -79,6 +79,10 @@ let collect_vars ctx pc =
 
 let rec compile_closure ctx pc info =
   let stack = collect_vars ctx pc in
+  (* Ensure free_vars have stack slots (they may not be in collect_vars result) *)
+  List.iter info.free_vars ~f:(fun v ->
+    if not (Hashtbl.mem stack (Var.idx v))
+    then Hashtbl.set stack ~key:(Var.idx v) ~data:(Hashtbl.length stack));
   let visited = Hash_set.create (module Int) in
   let n = Hashtbl.length stack in
   [ [%string "value %{cname pc}(value* env)"]
