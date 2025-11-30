@@ -3,7 +3,7 @@
  (libraries stdlib)
  (modes byte))
 
-(include ../common.dune)
+(include ../../common.dune)
 
 (rule
  (target main.c)
