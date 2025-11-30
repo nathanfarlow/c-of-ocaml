@@ -306,6 +306,11 @@ value caml_bytes_unsafe_set(value s, value i, value c) {
   return Val_unit;
 }
 
+value caml_bytes_unsafe_get(value s, value i) {
+  char c = Str_val(s)[Int_val(i)];
+  return Val_int(c);
+}
+
 value caml_string_of_bytes(value s) { return s; }
 
 value caml_string_notequal(value s1, value s2) {
@@ -367,6 +372,8 @@ value caml_int_compare(value a, value b) {
     return Val_int(1);
   return Val_int(0);
 }
+
+value caml_exit(value code) { exit(Int_val(code)); }
 
 /* TODO: Implement these */
 value caml_register_global(value a, value b, value c) { return Val_unit; }

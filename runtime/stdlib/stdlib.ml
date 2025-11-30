@@ -106,6 +106,7 @@ let[@tail_mod_cons] rec ( @ ) l1 l2 =
 (* Unit operations *)
 
 external ignore : 'a -> unit = "%ignore"
+external exit : int -> 'a = "caml_exit"
 
 (* Pair operations *)
 

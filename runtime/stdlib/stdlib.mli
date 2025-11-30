@@ -246,6 +246,9 @@ val ( ^ ) : string -> string -> string
     avoids the warning. *)
 external ignore : 'a -> unit = "%ignore"
 
+(** Terminate the process, returning the given status code to the parent. *)
+external exit : int -> 'a = "caml_exit"
+
 (** {1 Pair operations} *)
 
 (** Return the first component of a pair. *)
