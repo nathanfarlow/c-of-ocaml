@@ -8,8 +8,8 @@ program running on a calculator. Its OCaml source is [here](calc/cube).
 ## Features
 - ✅ Garbage collector
 - ✅ Random selections of the stdlib
-- ❌ Floats
 - ✅ Exceptions
+- ❌ Floats
 - ❌ Objects
 
 ## Usage
