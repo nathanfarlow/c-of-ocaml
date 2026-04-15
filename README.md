@@ -14,19 +14,16 @@ program running on a calculator. Its OCaml source is [here](calc/cube).
 
 ## Usage
 
-Use opam to create a switch and install the deps for this repo:
+This branch (`oxcaml`) targets the [OxCaml](https://oxcaml.org) compiler
+variant and `js_of_ocaml-compiler.6.0.1+ox`. For the original setup
+(vanilla OCaml 5.2.0 + `js_of_ocaml-compiler 5.8.2`), see
+`git checkout main`.
 
 ```
-opam switch create c_of_ocaml 5.2.0
-opam pin add js_of_ocaml-compiler 5.8.2
-opam install core_unix ppx_jane core async expect_test_helpers_async
-
-# To use this switch:
-opam switch c_of_ocaml
+opam switch create 5.2.0+ox --repos ox=git+https://github.com/oxcaml/opam-repository.git,default
+eval $(opam env --switch 5.2.0+ox)
+opam install -y js_of_ocaml-compiler core core_unix ppx_jane async expect_test_helpers_async
 ```
-
-Make sure to use the `c_of_ocaml` switch when building this project, since it
-keeps the `Js_of_ocaml` dependency at the right revision.
 
 To build an OCaml program for pc:
 1. `git clone https://github.com/nathanfarlow/c-of-ocaml`

@@ -29,8 +29,8 @@ let inline p =
   Inline.f p live
 ;;
 
-let flow_simple p = Flow.f ~skip_param:true p
 let flow = Flow.f
+let flow_simple = Flow.f
 let phi = Phisimpl.f
 let eval (p, info) = Eval.f info p
 
@@ -46,7 +46,7 @@ let round1 = tailcall +> inline +> deadcode +> flow_simple +> specialize' +> eva
 
 let rec loop max round i p =
   let p' = round p in
-  if i >= max || Code.eq p' p then p' else loop max round (i + 1) p'
+  if i >= max || Code.equal p' p then p' else loop max round (i + 1) p'
 ;;
 
 let exact_calls ~deadcode_sentinal p =

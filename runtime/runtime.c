@@ -386,6 +386,10 @@ value caml_blit_bytes(value src, value src_pos, value dst, value dst_pos, value 
   return Val_unit;
 }
 
+value caml_blit_string(value src, value src_pos, value dst, value dst_pos, value len) {
+  return caml_blit_bytes(src, src_pos, dst, dst_pos, len);
+}
+
 /* I/O */
 value caml_putc(value c) {
   putchar(Int_val(c));

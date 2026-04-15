@@ -16,7 +16,7 @@ type ctx =
 
 let find_closures prog =
   let free = Freevars.f prog in
-  fold_closures prog (fun _ params cont acc -> (params, cont) :: acc) []
+  fold_closures prog (fun _ params cont _loc acc -> (params, cont) :: acc) []
   |> List.map ~f:(fun (params, ((pc, _) as cont)) ->
     let free_vars =
       Addr.Map.find_opt pc free |> Option.value_map ~default:[] ~f:Var.Set.elements
@@ -25,7 +25,7 @@ let find_closures prog =
   |> Hashtbl.of_alist_exn (module Int)
 ;;
 
-let vname v = [%string "v_%{Var.to_string v}"]
+let vname v = [%string "v_%{Var.idx v#Int}"]
 let cname pc = [%string "c%{pc#Int}"]
 let bname pc = [%string "b%{pc#Int}"]
 let sname s = [%string "s_%{String.hash s#Int}"]
@@ -67,10 +67,10 @@ let collect_vars ctx pc =
        let b = Addr.Map.find pc ctx.prog.blocks in
        List.iter b.params ~f:add;
        List.iter b.body ~f:(function
-         | Let (v, _), _ -> add v
+         | Let (v, _) -> add v
          | _ -> ());
        (* Also collect exception variables from Pushtrap *)
-       match fst b.branch with
+       match b.branch with
        | Pushtrap (_, exn_var, _) -> add exn_var
        | _ -> ())
     pc
@@ -145,13 +145,14 @@ and compile_block ctx visited stack pc =
     [%string "%{bname pc}:;\n%{instrs}"])
 
 and closure_of = function
-  | Let (v, Closure (p, (pc, _))), _ -> Some (v, p, pc)
+  | Let (v, Closure (p, (pc, _), _)) -> Some (v, p, pc)
   | _ -> None
 
-and compile_instr ctx stack (instr, _) =
+and compile_instr ctx stack instr =
   let g = get stack in
   match instr with
-  | Let (v, Closure (p, (pc, _))) ->
+  | Event _ -> ""
+  | Let (v, Closure (p, (pc, _), _)) ->
     let fv = (Hashtbl.find_exn ctx.closures pc).free_vars in
     let alloc =
       set
@@ -168,7 +169,7 @@ and compile_instr ctx stack (instr, _) =
     String.concat_lines (preamble @ [ set ~decl:true stack v expr ])
   | Let (v, e) -> set ~decl:true stack v (compile_expr ctx stack e)
   | Assign (v1, v2) -> set stack v1 (g v2)
-  | Set_field (v, n, x) -> [%string "Field(%{g v}, %{n#Int}) = %{g x};"]
+  | Set_field (v, n, _, x) -> [%string "Field(%{g v}, %{n#Int}) = %{g x};"]
   | Offset_ref (v, n) -> [%string "Field(%{g v}, 0) += %{n#Int};"]
   | Array_set (a, i, x) -> [%string "Field(%{g a}, Int_val(%{g i})) = %{g x};"]
 
@@ -177,18 +178,21 @@ and compile_expr ctx stack = function
     let a = List.map args ~f:(get stack) |> String.concat ~sep:", " in
     [%string "caml_call(%{get stack f}, %{List.length args#Int}, %{a})"]
   | Block (tag, fields, _, _) ->
-    let fs =
-      Array.map fields ~f:(get stack) |> Array.to_list |> String.concat ~sep:", "
-    in
-    [%string "caml_alloc(%{tag#Int}, %{Array.length fields#Int}, %{fs})"]
-  | Field (v, n) -> [%string "Field(%{get stack v}, %{n#Int})"]
+    let n = Array.length fields in
+    if n = 0
+    then [%string "caml_alloc(%{tag#Int}, 0)"]
+    else (
+      let fs =
+        Array.map fields ~f:(get stack) |> Array.to_list |> String.concat ~sep:", "
+      in
+      [%string "caml_alloc(%{tag#Int}, %{n#Int}, %{fs})"])
+  | Field (v, n, _) -> [%string "Field(%{get stack v}, %{n#Int})"]
   | Constant c -> snd (compile_const ctx c)
   | Prim (p, args) -> compile_prim ctx stack p args
   | Closure _ -> assert false
-  | Special Undefined -> "Val_unit"
   | Special (Alias_prim _) -> "Val_unit"
 
-and compile_last ctx visited stack (last, _) =
+and compile_last ctx visited stack last =
   let g = get stack in
   let branch pc args = [%string "%{rename ctx stack pc args}\ngoto %{bname pc};"] in
   match last with
@@ -235,21 +239,24 @@ and compile_last ctx visited stack (last, _) =
     [%string "trap_sp--;\n%{br}\n%{block}"]
 
 and const_allocates = function
-  | Int _ | String _ | NativeString _ -> false
-  | Float _ | Int64 _ | Float_array _ | Tuple _ -> true
+  | Int _ | Int32 _ | NativeInt _ | String _ | NativeString _ | Null -> false
+  | Float _ | Float32 _ | Int64 _ | Float_array _ | Tuple _ -> true
 
 (* Returns (preamble_statements, expression) *)
 and compile_const ctx c =
   match c with
-  | Int i -> [], [%string "Val_int(%{i#Int32}L)"]
-  | Float f -> [], [%string "caml_copy_double(%{f#Float})"]
+  | Null -> [], "Val_unit"
+  | Int i -> [], [%string "Val_int(%{Targetint.to_int32 i#Int32}L)"]
+  | Int32 i | NativeInt i -> [], [%string "Val_int(%{i#Int32}L)"]
+  | Float f | Float32 f ->
+    [], [%string "caml_copy_double(%{Int64.float_of_bits f#Float})"]
   | String s | NativeString (Byte s | Utf (Utf8 s)) ->
     Hash_set.add ctx.strings s;
     [], sname s
   | Int64 i -> [], [%string "caml_copy_int64(%{i#Int64}LL)"]
   | Float_array fa ->
     let elts =
-      Array.map fa ~f:(fun f -> [%string "%{f#Float}"])
+      Array.map fa ~f:(fun f -> [%string "%{Int64.float_of_bits f#Float}"])
       |> Array.to_list
       |> String.concat ~sep:", "
     in
